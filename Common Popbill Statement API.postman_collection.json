@@ -1,0 +1,1841 @@
+{
+	"info": {
+		"_postman_id": "4af95e81-c826-4840-ab3e-18a8674cb414",
+		"name": "Common Popbill Statement API",
+		"description": "When you call GetToken Request, the token used for Bearer authentication is stored in the variable of Collection Scope.\n\n\nSo, You must always call GetToken to test the API.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "GetToken",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/*********************************************************************************",
+							" *",
+							" * GetToken is a sample code that issues a Bearer token to be entered in ",
+							" * the Authentication header when calling the POPBiLL API.",
+							" * ",
+							" * (See the POPBILL API Certificate PDF Manual for more information)",
+							" *",
+							" **********************************************************************************/",
+							"",
+							"// The LinkID and SecretKey are credentials and are changed to the values ​​provided by POPBiLL.",
+							"var LinkID = '<<enter LINKID>>';  // ex. 'LINKHUB'",
+							"var SecretKey = '<<enter SecretKey>>'; //ex. 'CAuU7dpL4viqfoT6G+HJjqWzHhg3hRDD5sKIkp7Yqwc='",
+							"",
+							"/*",
+							" * The following code is that makes up the HMAC Message Digest ",
+							" */",
+							"",
+							"// Access_id is the Supplier's Business Registration Number (10 digits number except hyphen('-'))",
+							"// and the Scope array is a list of service codes that can be used for the issued token.",
+							"// (Scopes value - '12*' means Type of the e-Statement.)",
+							"//  └ 121 = Transaction details, 122 = Bill, 123 = Estimate, 124 = Purchase order, 125 = Deposit slip, 126 = Receipt",
+							"",
+							"var Access_id = '1208184429'; // This is AppleKorea's Business Registration Number.",
+							"var Scopes = ['member', '121','122', '123', '124', '125', '126'];",
+							"var TokenRequest = stringify({access_id : Access_id, scope : Scopes});",
+							"var Body = CryptoJS.MD5(TokenRequest).toString(CryptoJS.enc.Base64);",
+							"",
+							"var RequestDT = new Date().toISOString();",
+							"",
+							"var digestTarget =",
+							"      'POST\\n' +",
+							"      Body + '\\n' +",
+							"      RequestDT +'\\n' +",
+							"      '1.0\\n' +",
+							"      '/POPBILL_TEST/Token';",
+							"",
+							"var HMACDigest = generateSignature(digestTarget, SecretKey);",
+							"var Authorization = 'LINKHUB '+LinkID + ' '+HMACDigest;",
+							"",
+							"// Request headers for API Server HMAC authentication.",
+							"pm.collectionVariables.set(\"DateTime\", RequestDT);",
+							"pm.collectionVariables.set(\"TokenRequest\", TokenRequest);",
+							"pm.collectionVariables.set(\"Authorization\", Authorization);",
+							"",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}",
+							"",
+							"function generateSignature(message, key) {",
+							"    var keyDec = CryptoJS.enc.Base64.parse(key)",
+							"    var enc = CryptoJS.HmacSHA1(message, keyDec).toString(CryptoJS.enc.Base64);",
+							"    return enc;",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.collectionVariables.clear();",
+							"",
+							"if(pm.response.code == 200 ) {",
+							"    pm.collectionVariables.set(\"API_Session_Token\",'Bearer ' +  pm.response.json().session_token);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-lh-date",
+						"value": "{{DateTime}}",
+						"type": "text"
+					},
+					{
+						"key": "x-lh-version",
+						"value": "1.0",
+						"type": "text"
+					},
+					{
+						"key": "Connection",
+						"value": "close",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{Authorization}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{TokenRequest}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-auth.linkhub.co.kr/POPBILL_TEST/Token",
+					"protocol": "https",
+					"host": [
+						"ga-auth",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"POPBILL_TEST",
+						"Token"
+					]
+				},
+				"description": "Request Token for POPBiLL API."
+			},
+			"response": []
+		},
+		{
+			"name": "RegistIssue",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" * ",
+							" * see Details - https://docs.popbill.com/en/statement/java/api#RegistIssue",
+							" */"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{API_Session_Token}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pb-userid",
+						"value": "applekorea",
+						"type": "text"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"value": "ISSUE",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "/*\n* Object of e-Statement (Statement Type : Transaction details)\n*\n* A more detailed explanation can be found from the link below.\n* - https://docs.popbill.com/en/statement/java/api#Statement\n*/\n\n{\n    // Date of preparation, Format : yyyyMMdd\n    \"writeDate\": \"20201116\",\n\n    // Type of the total amount\n    // └ Valid Value : 영수 / 청구\n    // └ 영수 = Amount paid, 청구 = Amount due\n    \"purposeType\": \"영수\",\n\n    // Taxation Type\n    // └ Valid Value : 과세 / 영세 / 면세\n    // └ 과세 = Taxable, 영세 = Zero-rate, 면세 = Exempted\n    \"taxType\": \"과세\",\n\n    // Code for customized template \n    // └ Default : Applying POPBiLL default template\n    \"formCode\": \"\",\n\n    // Type of the e-Statement\n    // └ Valid Value : 121 / 122 / 123 / 124 / 125 / 126\n    // └ 121 = Transaction details, 122 = Bill, 123 = Estimate, 124 = Purchase order, 125 = Deposit slip, 126 = Receipt\n    \"itemCode\": 121,\n\n    // Statement ID assigned by partner(user)\n    // └ An unique value to combine English letter, numeric and hyphen('-') *No redundancy\n    \"mgtKey\": \"20201116-06\",\n\n    // Title of notification mail sent to customer \n    // - Default: a title POPBiLL set in advance\n    \"emailSubject\": \"\",\n\n    /*************************************************************************\n    *                             Supplier Information\n    **************************************************************************/\n\n    // [Supplier] Business registration number\n    // └ 10 digits number except hyphen(‘-’)\n    \"senderCorpNum\": \"1208184429\",\n\n    // [Supplier] Company name\n    \"senderCorpName\": \"Supplier Company name\",\n\n    // [Supplier] Address\n    \"senderAddr\": \"Supplier Address\",\n\n    // [Supplier] Representative name\n    \"senderCEOName\": \"Supplier Representative name\",\n\n    // [Supplier] Identification Number for minor place of business\n    // └ 4 digits number\n    \"senderTaxRegID\": \"\",\n\n    // [Supplier] Business Item\n    \"senderBizClass\": \"Supplier Business Item\",\n\n    // [Supplier] Business Type\n    \"senderBizType\": \"Supplier Business Type\",\n\n    // [Supplier] Name of the person in charge\n    \"senderContactName\": \"Supplier Name person in charge\",\n\n    // [Supplier] Email of the person in charge\n    \"senderEmail\": \"test@test.com\",\n\n    // [Supplier] Contact of the person in charge\n    \"senderTEL\": \"070-4304-2991\",\n\n    /*************************************************************************\n    *                         Customer Infomation\n    **************************************************************************/\n\n    // [Customer] Business registration number\n    // └ 10 digits number except hyphen(‘-’)\n    \"receiverCorpNum\": \"8888888888\",\n\n    // [Customer] Company name\n    \"receiverCorpName\": \"Customer Company name\",\n\n    // [Customer] Representative name\n    \"receiverCEOName\": \"Customer Representative name\",\n\n    // [Customer] Address\n    \"receiverAddr\": \"Customer Address\",\n\n    // [Customer] Identification Number for minor place of business\n    // └ 4 digits number\n    \"recieverTaxRegID\": \"\",\n\n    // [Customer] Business Item\n    \"receiverBizClass\": \"Customer Business Item\",\n\n    // [Customer] Business Type\n    \"receiverBizType\": \"Customer Business Type\",\n\n    // [Customer] Name of the person in charge\n    \"receiverContactName\": \"Customer Name person in charge\",\n\n    // [Customer] Email of the person in charge\n    \"receiverEmail\": \"test@test.com\",\n\n    // [Customer] Contact of the person in charge\n    \"receiverTEL\": \"070-1111-2222\",\n\n    /*************************************************************************\n    *                        e-Statement Details\n    **************************************************************************/\n\n    // Sum of supply values\n    // └ Only positive(+)/negative(-) numbers and – (minus sign) are available\n    \"supplyCostTotal\": \"20000\",\n\n    // Sum of tax amount\n    // └ Only positive(+)/negative(-) numbers and – (minus sign) are available\n    \"taxTotal\": \"2000\",\n\n    // Total Amount\n    // └ sum of {no.9 taxTotal} and {no.10 supplyCostTotal}\n    // └ Only positive(+)/negative(-) numbers and – (minus sign) are available\n    \"totalAmount\": \"22000\",\n\n    // Serial Number\n    \"serialNum\": \"1\",\n\n    // 1st Remark\n    \"remark1\": \"1st Remark\",\n\n    // 2nd Remark\n    \"remark2\": \"2nd Remark\",\n\n    // 3rd Remark\n    \"remark3\": \"3rd Remark\",\n\n    // Whether you attach registered business license\n    // └ true : attach, false : not attach(Default)\n    \"businessLicenseYN\": false,\n\n    // \tWhether you attach registered copy of bankbook\n    // └ true : attach, false : not attach(Default)\n    \"bankBookYN\": false,\n\n\n    /*************************************************************************\n    *          \t[List] Detailed list of items (※ No length limit)\n    **************************************************************************/\n    \"detailList\": [\n        {\n            // Serial Number\n            // └ Must write the number in a row starting from 1\n            \"serialNum\": 1,\n            \n            // Item name\n            \"itemName\": \"Item name - 01\",\n\n            // Date of preparation\n            // └ Format : yyyyMMdd\n            \"purchaseDT\": \"20201116\",\n\n            // Quantity\n            // └ Available to two decimal places\n            // └ Minus(Negative) amount is available\n            \"qty\": \"1\",\n\n            // Unit price\n            // └ Available to two decimal places\n            // └ Minus(Negative) amount is available\n            \"unitCost\": \"10000\",\n\n            // Specification\n            \"spec\": \"Item's Specification\",\n\n            // Supply values\n            // └ Unavailable to decimal places\n            // └ Minus(Negative) amount is available\n            // └ Below the decimal point is rounded off\n            \"supplyCost\": \"10000\",\n\n            // Tax amount\n            // └ Unavailable to decimal places\n            // └ Minus(Negative) amount is available\n            // └ Below the decimal point is rounded off\n            \"tax\": \"1000\",\n\n            // Item's Remark\n            \"remark\": \"Item's remark - 01\"\n        },\n        {\n            // Serial Number\n            // └ Must write the number in a row starting from 1\n            \"serialNum\": 2,\n            \n            // Item name\n            \"itemName\": \"Item name - 02\",\n\n            // Date of preparation\n            // └ Format : yyyyMMdd\n            \"purchaseDT\": \"20201116\",\n\n            // Quantity\n            // └ Available to two decimal places\n            // └ Minus(Negative) amount is available\n            \"qty\": \"1\",\n\n            // Unit price\n            // └ Available to two decimal places\n            // └ Minus(Negative) amount is available\n            \"unitCost\": \"10000\",\n\n            // Specification\n            \"spec\": \"Item's Specification\",\n\n            // Supply values\n            // └ Unavailable to decimal places\n            // └ Minus(Negative) amount is available\n            // └ Below the decimal point is rounded off\n            \"supplyCost\": \"10000\",\n\n            // Tax amount\n            // └ Unavailable to decimal places\n            // └ Minus(Negative) amount is available\n            // └ Below the decimal point is rounded off\n            \"tax\": \"1000\",\n\n            // Item's Remark\n            \"remark\": \"Item's remark - 02\"\n        }\n    ],\n\n    /*****************************************************************************\n    *                         Additional Property\n    * - Check Detail : https://docs.popbill.com/en/statement/propertyBag?lang=java\n    ******************************************************************************/\n\n    \"propertyBag\": {\n        \"Balance\": \"2000\",     // Previous Balance\n        \"Deposit\": \"500\",      // Deposit Amount\n        \"CBalance\": \"2500\"     // Current Balance\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement"
+					]
+				},
+				"description": "ㆍRegist and Issue the e-Statement. At the same time of issuance, points(fee) is charged and notification mail is sent to customer.\n\nㆍThe status of invoice is changed to 'Waiting for confirmation' when the result is returned successfully.\n\nhttps://docs.popbill.com/en/statement/java/api#RegistIssue"
+			},
+			"response": []
+		},
+		{
+			"name": "Cancel",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" * ",
+							" * see Details - https://docs.popbill.com/en/statement/java/api#Cancel",
+							" */",
+							"",
+							"// Type of the e-Statement",
+							"// └ Valid Value : 121 / 122 / 123 / 124 / 125 / 126",
+							"// └ 121 = Transaction details, 122 = Bill, 123 = Estimate, 124 = Purchase order, 125 = Deposit slip, 126 = Receipt",
+							"var Cancel_ItemCode = '121';",
+							"pm.collectionVariables.set(\"Cancel_ItemCode\", Cancel_ItemCode);",
+							"",
+							"",
+							"// mgtKey to cancel the issued e-Statement ",
+							"var mgtKey = '20201116-01'",
+							"pm.collectionVariables.set(\"Cancel_mgtKey\", mgtKey);",
+							"",
+							"// Memo for user's convenience",
+							"// └ invisible to customer",
+							"var reqBodyObj = {",
+							"  memo : 'Memo'",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"CancelIssue_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}",
+							"",
+							"",
+							"",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "applekorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "CANCEL"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{CancelIssue_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{Cancel_ItemCode}}/{{Cancel_mgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{Cancel_ItemCode}}",
+						"{{Cancel_mgtKey}}"
+					]
+				},
+				"description": "ㆍCancel the e-Statement in the state of '승인대기(Waiting for confirmation)' or '발행완료(Issued)'. The status is changed to '취소(Canceled before issuance)' and '발행취소(Canceled after issuance)' each.\n\nㆍHow to reuse an statement ID of canceled e-Statement : Delete canceled e-Statement calling [1.4. Delete]API.\n\nhttps://docs.popbill.com/en/statement/java/api#Cancel"
+			},
+			"response": []
+		},
+		{
+			"name": "Delete",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" * ",
+							" * see Details - https://docs.popbill.com/en/statement/java/api#Delete",
+							" */",
+							"",
+							"// Type of the e-Statement",
+							"// └ Valid Value : 121 / 122 / 123 / 124 / 125 / 126",
+							"// └ 121 = Transaction details, 122 = Bill, 123 = Estimate, 124 = Purchase order, 125 = Deposit slip, 126 = Receipt",
+							"var Delete_ItemCode = '121';",
+							"pm.collectionVariables.set(\"Delete_ItemCode\", Delete_ItemCode);",
+							"",
+							"",
+							"// mgtKey to delete the cancled e-Statement",
+							"var mgtKey = '20201116-01'",
+							"pm.collectionVariables.set(\"Delete_mgtKey\", mgtKey);",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "applekorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "DELETE"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{Delete_ItemCode}}/{{Delete_mgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{Delete_ItemCode}}",
+						"{{Delete_mgtKey}}"
+					]
+				},
+				"description": "ㆍDelete canceled e-Statement in deletable status. A statement ID of deleted e-Statement can be reused.\n\n※ The deletable status : Canceled before issuance, Denied, Canceled after issuance\n\nhttps://docs.popbill.com/en/statement/java/api#Delete"
+			},
+			"response": []
+		},
+		{
+			"name": "GetInfo",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" * ",
+							" * see Details - https://docs.popbill.com/en/statement/java/api#GetInfo",
+							" */",
+							"",
+							"// Type of the e-Statement",
+							"// └ Valid Value : 121 / 122 / 123 / 124 / 125 / 126",
+							"// └ 121 = Transaction details, 122 = Bill, 123 = Estimate, 124 = Purchase order, 125 = Deposit slip, 126 = Receipt",
+							"var SendEmail_ItemCode = '121';",
+							"pm.collectionVariables.set(\"GetInfo_ItemCode\", SendEmail_ItemCode);",
+							"",
+							"",
+							"// e-Statement's mgtKey to check Information",
+							"var mgtKey = '20201116-01';",
+							"pm.collectionVariables.set(\"GetInfo_mgtKey\", mgtKey);",
+							"",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "applekorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "",
+						"disabled": true
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{GetInfo_ItemCode}}/{{GetInfo_mgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{GetInfo_ItemCode}}",
+						"{{GetInfo_mgtKey}}"
+					]
+				},
+				"description": "ㆍCheck the status of a single e-Statement and summarized information.\n\nhttps://docs.popbill.com/en/statement/java/api#GetInfo"
+			},
+			"response": []
+		},
+		{
+			"name": "GetInfos",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" * ",
+							" * see Details - https://docs.popbill.com/en/statement/java/api#GetInfos",
+							" */",
+							"",
+							"// Type of the e-Statement",
+							"// └ Valid Value : 121 / 122 / 123 / 124 / 125 / 126",
+							"// └ 121 = Transaction details, 122 = Bill, 123 = Estimate, 124 = Purchase order, 125 = Deposit slip, 126 = Receipt",
+							"var GetInfos_ItemCode = '121';",
+							"pm.collectionVariables.set(\"GetInfos_ItemCode\", GetInfos_ItemCode);",
+							"",
+							"// List of mgtKey array to check the status (Maximum : 1000 invoices)",
+							"var mgtKeyList = ['20201116-01','20201116-02', '20201116-03']",
+							"pm.collectionVariables.set(\"GetInfos_mgtKeyList\", stringify(mgtKeyList));",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "applekorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{GetInfos_mgtKeyList}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{GetInfos_ItemCode}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{GetInfos_ItemCode}}"
+					]
+				},
+				"description": "ㆍCheck the status of bulk e-Statements and summarized information. (Maximum : 1000 statements)\n\nhttps://docs.popbill.com/en/statement/java/api#GetInfos"
+			},
+			"response": []
+		},
+		{
+			"name": "GetDetailInfo",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" * ",
+							" * see Detials - https://docs.popbill.com/en/statement/java/api#GetDetailInfo",
+							" */",
+							"",
+							"",
+							"// Type of the e-Statement",
+							"// └ Valid Value : 121 / 122 / 123 / 124 / 125 / 126",
+							"// └ 121 = Transaction details, 122 = Bill, 123 = Estimate, 124 = Purchase order, 125 = Deposit slip, 126 = Receipt",
+							"var GetDetailInfo_ItemCode = '121';",
+							"pm.collectionVariables.set(\"GetDetailInfo_ItemCode\", GetDetailInfo_ItemCode);",
+							"",
+							"",
+							"// mgtKey to check the detail e-Statement infomation",
+							"var mgtKey = '20201116-01'",
+							"pm.collectionVariables.set(\"GetDetailInfo_mgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "applekorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "",
+						"disabled": true
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{GetDetailInfo_ItemCode}}/{{GetDetailInfo_mgtKey}}?Detail",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{GetDetailInfo_ItemCode}}",
+						"{{GetDetailInfo_mgtKey}}"
+					],
+					"query": [
+						{
+							"key": "Detail",
+							"value": null
+						}
+					]
+				},
+				"description": "ㆍCheck detailed information of a single e-Statement.\n\nhttps://docs.popbill.com/en/statement/java/api#GetDetailInfo"
+			},
+			"response": []
+		},
+		{
+			"name": "Search",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							"",
+							"// 조회 기준일자 유형: \"R\" / \"W\" / \"I\" 중 택 1",
+							"// └ R = 등록일자, W = 작성일자, I = 발행일자",
+							"var DType = 'I'",
+							"pm.collectionVariables.set(\"Search_DType\", DType);",
+							"",
+							"// 조회 기간의 시작일자 (형식 : yyyyMMdd)",
+							"var SDate = '20211130'",
+							"pm.collectionVariables.set(\"Search_SDate\", SDate);",
+							"",
+							"// 조회 기간의 종료일자 (형식 : yyyyMMdd)",
+							"var EDate = '20211130'",
+							"pm.collectionVariables.set(\"Search_EDate\", EDate);",
+							"",
+							"// [배열] 전자명세서 상태코드",
+							"// └ 2, 3번째 자리에 와일드카드(*) 사용가능, 예) \"1**\", \"3**\"",
+							"var State = ['1**', '2**','3**'];",
+							"pm.collectionVariables.set(\"Search_State\", State.join(','));",
+							"",
+							"// [배열] 전자명세서 문서유형 : 121 / 122 / 123 / 124 / 125 / 126 중 선택 (다중 선택 가능)",
+							"// └ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"var ItemCode = ['121','122'];",
+							"pm.collectionVariables.set(\"Search_ItemCode\", ItemCode.join(','));",
+							"",
+							"// 목록 페이지번호",
+							"var Page = 1;",
+							"pm.collectionVariables.set(\"Search_Page\", Page);",
+							"",
+							"// 페이지당 표시할 목록 개수 (최대 1,000)",
+							"var PerPage = '50';",
+							"pm.collectionVariables.set(\"Search_PerPage\", PerPage);",
+							"",
+							"// \t거래처 상호 / 사업자번호 중 검색하고자 하는 정보 입력",
+							"var QString = '';",
+							"pm.collectionVariables.set(\"Search_QString\", QString);",
+							"",
+							"// {@no.2 DType} 값을 기준으로 하는 목록 정렬 방향 : \"D\" / \"A\" 중 택 1",
+							"// └ D = 내림차순(기본값), A = 오름차순",
+							"var Order = 'D';",
+							"pm.collectionVariables.set(\"Search_Order\", Order);",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/Search?DType={{Search_DType}}&SDate={{Search_SDate}}&EDate={{Search_EDate}}&State={{Search_State}}&ItemCode={{Search_ItemCode}}&QString={{Search_QString}}&Page={{Search_Page}}&PerPage={{Search_PerPage}}&Order={{Search_Order}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"Search"
+					],
+					"query": [
+						{
+							"key": "DType",
+							"value": "{{Search_DType}}"
+						},
+						{
+							"key": "SDate",
+							"value": "{{Search_SDate}}"
+						},
+						{
+							"key": "EDate",
+							"value": "{{Search_EDate}}"
+						},
+						{
+							"key": "State",
+							"value": "{{Search_State}}"
+						},
+						{
+							"key": "ItemCode",
+							"value": "{{Search_ItemCode}}"
+						},
+						{
+							"key": "QString",
+							"value": "{{Search_QString}}"
+						},
+						{
+							"key": "Page",
+							"value": "{{Search_Page}}"
+						},
+						{
+							"key": "PerPage",
+							"value": "{{Search_PerPage}}"
+						},
+						{
+							"key": "Order",
+							"value": "{{Search_Order}}"
+						}
+					]
+				},
+				"description": "ㆍSearch e-Statements corresponded to the search criteria the user set.\n\nㆍDefault of optional fields is to 'search all'.\n\nhttps://docs.popbill.com/en/statement/java/api#Search"
+			},
+			"response": []
+		},
+		{
+			"name": "GetLogs",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							"",
+							"",
+							"//전자명세서 문서유형 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1",
+							"//└ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"var itemCode = '121'",
+							"pm.collectionVariables.set(\"GetLogs_ItemCode\", itemCode);",
+							"",
+							"// 확인할 전자명세서 문서번호",
+							"var mgtKey = '20211130_001'",
+							"pm.collectionVariables.set(\"GetLogs_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{GetLogs_ItemCode}}/{{GetLogs_MgtKey}}/Logs",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{GetLogs_ItemCode}}",
+						"{{GetLogs_MgtKey}}",
+						"Logs"
+					]
+				},
+				"description": "ㆍCheck the log of e-Statement's status change.\n\nhttps://docs.popbill.com/en/statement/java/api#GetLogs"
+			},
+			"response": []
+		},
+		{
+			"name": "GetURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							"",
+							"// 접근 메뉴 : \"TBOX\" / \"PBOX\" 중 택 1",
+							"// └ TBOX = 임시 문서함, / SBOX = 매출 문서함",
+							"var TOGO = 'TBOX'",
+							"pm.collectionVariables.set(\"GetURL_TOGO\", TOGO);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/?TG={{GetURL_TOGO}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						""
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "{{GetURL_TOGO}}"
+						}
+					]
+				},
+				"description": "ㆍGet the URL to access the page 'e-Statement list' on POPBiLL website in login status.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/statement/java/api#GetURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetPopUpURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							"",
+							"",
+							"//전자명세서 문서유형 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1",
+							"//└ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"var itemCode = '121'",
+							"pm.collectionVariables.set(\"GetPopUpURL_ItemCode\", itemCode);",
+							"",
+							"// 확인할 전자명세서 문서번호",
+							"var mgtKey = '20211130_001'",
+							"pm.collectionVariables.set(\"GetPopUpURL_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{GetPopUpURL_ItemCode}}/{{GetPopUpURL_MgtKey}}?TG=POPUP",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{GetPopUpURL_ItemCode}}",
+						"{{GetPopUpURL_MgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "POPUP"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to view a single e-Statement on POPBiLL website.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/statement/java/api#GetPopUpURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetViewURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							"",
+							"",
+							"//전자명세서 문서유형 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1",
+							"//└ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"var itemCode = '121'",
+							"pm.collectionVariables.set(\"GetViewURL_ItemCode\", itemCode);",
+							"",
+							"// 확인할 전자명세서 문서번호",
+							"var mgtKey = '20211130_001'",
+							"pm.collectionVariables.set(\"GetViewURL_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{GetViewURL_ItemCode}}/{{GetViewURL_MgtKey}}?TG=VIEW",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{GetViewURL_ItemCode}}",
+						"{{GetViewURL_MgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "VIEW"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to view a single e-Statement on POPBiLL website (showing a page without top, left menus and buttons)\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/statement/java/api#GetViewURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetPrintURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							"",
+							"//전자명세서 문서유형 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1",
+							"//└ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"var itemCode = '121'",
+							"pm.collectionVariables.set(\"GetPrintURL_ItemCode\", itemCode);",
+							"",
+							"// 인쇄할 전자명세서 문서번호",
+							"var mgtKey = '20211130_001'",
+							"pm.collectionVariables.set(\"GetPrintURL_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{GetPrintURL_ItemCode}}/{{GetPrintURL_MgtKey}}?TG=PRINT",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{GetPrintURL_ItemCode}}",
+						"{{GetPrintURL_MgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "PRINT"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to print a single e-Statement. User can select a print option - for supplier/customer/both.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/statement/java/api#GetPrintURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetEPrintURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							"",
+							"//전자명세서 문서유형 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1",
+							"//└ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"var itemCode = '121'",
+							"pm.collectionVariables.set(\"GetEPrintURL_ItemCode\", itemCode);",
+							"",
+							"// 인쇄할 전자명세서 문서번호",
+							"var mgtKey = '20211130_001'",
+							"pm.collectionVariables.set(\"GetEPrintURL_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{GetEPrintURL_ItemCode}}/{{GetEPrintURL_MgtKey}}?TG=EPRINT",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{GetEPrintURL_ItemCode}}",
+						"{{GetEPrintURL_MgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "EPRINT"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to print a single e-Statement for customer.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/statement/java/api#GetEPrintURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetMassPrintURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							"",
+							"//전자명세서 문서유형 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1",
+							"//└ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"var itemCode = '121'",
+							"pm.collectionVariables.set(\"GetMassPrintURL_ItemCode\", itemCode);",
+							"",
+							"// 인쇄할 전자명세서 문서번호 배열 (최대 : 1000 건)",
+							"var mgtKeyList = ['20211130_001','20211130_002', '20211130_003']",
+							"pm.collectionVariables.set(\"GetMassPrintURL_MgtKeyList\", stringify(mgtKeyList));",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{GetMassPrintURL_MgtKeyList}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{GetMassPrintURL_ItemCode}}/?Print",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{GetMassPrintURL_ItemCode}}",
+						""
+					],
+					"query": [
+						{
+							"key": "Print",
+							"value": null
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to print e-Statements in bulk. (Maximum : 100 statements)\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/statement/java/api#GetMassPrintURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetMailURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							"",
+							"//전자명세서 문서유형 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1",
+							"//└ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"var itemCode = '121'",
+							"pm.collectionVariables.set(\"GetMailURL_ItemCode\", itemCode);",
+							"",
+							"// 전자명세서 문서번호",
+							"var mgtKey = '20211130_001'",
+							"pm.collectionVariables.set(\"GetMailURL_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{GetMailURL_ItemCode}}/{{GetMailURL_MgtKey}}?TG=MAIL",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{GetMailURL_ItemCode}}",
+						"{{GetMailURL_MgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "MAIL"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL of button located on bottom of a notification mail sent to customer. User can access the page to check e-Statement in detail.\n\nㆍThere is no valid time.\n\nhttps://docs.popbill.com/en/statement/java/api#GetMailURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetAccessURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/?TG=LOGIN",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						""
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "LOGIN"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to access POPBiLL website in login status.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/statement/java/api#GetAccessURL"
+			},
+			"response": []
+		},
+		{
+			"name": "SendEmail",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" * ",
+							" * see Details - https://docs.popbill.com/en/statement/java/api#SendEmail",
+							" */",
+							"",
+							"// Type of the e-Statement",
+							"// └ Valid Value : 121 / 122 / 123 / 124 / 125 / 126",
+							"// └ 121 = Transaction details, 122 = Bill, 123 = Estimate, 124 = Purchase order, 125 = Deposit slip, 126 = Receipt",
+							"var SendEmail_ItemCode = '121';",
+							"pm.collectionVariables.set(\"SendEmail_ItemCode\", SendEmail_ItemCode);",
+							"",
+							"",
+							"// e-Statement's mgtKey to Email Resend",
+							"var invoicerMgtKey = '20201116-01';",
+							"pm.collectionVariables.set(\"SendEmail_mgtKey\", invoicerMgtKey);",
+							"",
+							"",
+							"",
+							"// Receiver Email Address",
+							"var reqBodyObj = {",
+							"  receiver : 'code@linkhub.co.kr'",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"SendEmail_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "applekorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "EMAIL"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{SendEmail_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{SendEmail_ItemCode}}/{{SendEmail_mgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{SendEmail_ItemCode}}",
+						"{{SendEmail_mgtKey}}"
+					]
+				},
+				"description": "ㆍResend a notification mail to customer. There's no minimum time required and no maximum number of calling API.\n\nhttps://docs.popbill.com/en/statement/java/api#SendEmail"
+			},
+			"response": []
+		},
+		{
+			"name": "SendSMS",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							"",
+							"",
+							"//전자명세서 문서유형 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1",
+							"//└ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"var itemCode = '121'",
+							"pm.collectionVariables.set(\"SendSMS_ItemCode\", itemCode);",
+							"",
+							"// 이메일 재전송할 전자명세서 문서번호",
+							"var mgtKey = '20211130_001';",
+							"pm.collectionVariables.set(\"SendSMS_MgtKey\", mgtKey);",
+							"",
+							"// SMS 정보",
+							"var reqBodyObj = {",
+							"  receiver : '010-000-0000', // 수신번호",
+							"  sender : '070-1234-1234', // 발신번호",
+							"  contents : 'test sms', // 메시지 내용, (*최대 90 byte까지 입력 가능, 초과한 내용은 자동으로 삭제되어 전송)",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"SendSMS_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "SMS"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{SendSMS_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{SendSMS_ItemCode}}/{{SendSMS_MgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{SendSMS_ItemCode}}",
+						"{{SendSMS_MgtKey}}"
+					]
+				},
+				"description": "ㆍSend a SMS(short message) to notify issuance of e-Statement and the fee is charged.\n\nㆍUser can check the result of sending SMS on POPBiLL website [문자·팩스(Messaging/FAX) -> 문자(Messaging) -> 전송내역(Sending log)]\n\nㆍSMS's capacity is 90byte and exceeded contents are truncated automatically. (Maximum of Korean letters : 45)\n\nhttps://docs.popbill.com/en/statement/java/api#SendEmail"
+			},
+			"response": []
+		},
+		{
+			"name": "SendFAX",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							"",
+							"",
+							"//전자명세서 문서유형 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1",
+							"//└ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"var itemCode = '121'",
+							"pm.collectionVariables.set(\"SendFAX_ItemCode\", itemCode);",
+							"",
+							"// 현금영수증 문서번호 ",
+							"var mgtKey = '20211130_001';",
+							"pm.collectionVariables.set(\"SendFAX_mgtKey\", mgtKey);",
+							"",
+							"// FAX 정보.",
+							"var reqBodyObj = {",
+							"  receiver : '010-000-0000', // 수신번호",
+							"  sender : '070-1234-1234', // 발신번호",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"SendFAX_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "FAX"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{SendFAX_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{SendFAX_ItemCode}}/{{SendFAX_mgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{SendFAX_ItemCode}}",
+						"{{SendFAX_mgtKey}}"
+					]
+				},
+				"description": "ㆍSend an e-Statement registered in POPBiLL and issued by fax and the fee is charged.\n\nㆍUser can check the result of sending fax on POPBiLL website [문자·팩스(Messaging/FAX) -> 팩스(FAX) -> 전송내역(Sending log)].\n\nhttps://docs.popbill.com/en/statement/java/api#SendFAX"
+			},
+			"response": []
+		},
+		{
+			"name": "FAXSend",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "FAX"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    // 발신 번호\r\n    \"sendNum\" : \"070111222\",\r\n\r\n    // 수신 번호\r\n    \"receiveNum\" : \"010111222\",\r\n\r\n    // [필수] 기재상 작성일자\r\n    \"writeDate\" : \"20211130\",\r\n\r\n    // [필수] 과세형태, (과세, 영세, 면세) 중 기재\r\n    \"taxType\" : \"과세\",\r\n\r\n    // [필수] (영수, 청구) 중 기재\r\n    \"purposeType\" : \"영수\",\r\n\r\n    // 전자명세서 문서유형 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1\r\n    // └ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증\r\n    \"itemCode\" : \"121\",\r\n\r\n    // 전자명세서 관리를 위해 파트너가 할당하는 식별번호\r\n    // └ 영문 대소문자, 숫자, 특수문자('-','_')만 이용 가능 \r\n    \"mgtKey\" : \"20211130_100\",\r\n\r\n    /************************************************************\r\n     *                         공급자 정보\r\n     ************************************************************/\r\n\r\n    \"senderCorpNum\" : \"1234567890\",\r\n    \"senderTaxRegID\" : \"\",\r\n    \"senderCorpName\" : \"테스트 상호\",\r\n    \"senderCEOName\" : \"테스트 대표\",\r\n    \"senderAddr\" : \"테스트 주소\",\r\n    \"senderBizType\" : \"테스트 업태\",\r\n    \"senderBizClass\" : \"테스트 종목\",\r\n    \"senderContactName\" : \"테스트 담당자 성명\",\r\n    \"senderDeptName\" : \"테스트 부서명\",\r\n    \"senderTEL\" : \"070-111-222\",\r\n    \"senderHP\" : \"010-000-222\",\r\n    \"senderEmail\" : \"test@test.com\",\r\n    \r\n    /************************************************************\r\n     *                     공급받는자 정보\r\n     ************************************************************/\r\n\r\n    \"receiverCorpNum\" : \"8888888888\",\r\n    \"receiverTaxRegID\" : \"\"\t,\r\n    \"receiverCorpName\" : \"공급받는자 상호\",\r\n    \"receiverCEOName\" : \"공급받는자 대표자 성명\",\r\n    \"receiverAddr\" : \"공급받는자 주소\",\r\n    \"receiverBizClass\" : \"공급받는자 업종\",\r\n    \"eceiverBizType\" : \"공급받는자 업태\",\r\n    \"receiverContactName\" : \"공급받는자 담당자명\",\r\n    \"receiverTEL\" : \"010-0000-1111\",\r\n    \"receiverHP\" : \"010-1111-2222\",\r\n    // 팝빌 개발환경에서 테스트하는 경우에도 안내 메일이 전송되므로,\r\n    // 실제 거래처의 메일주소가 기재되지 않도록 주의\r\n    \"receiverEmail\" : \"test@test.com\",\r\n\r\n    /************************************************************\r\n     *                   전자명세서 기재정보\r\n     ************************************************************/\r\n\r\n    \"supplyCostTotal\" : \"200000\",\t\t\t// [필수] 공급가액 합계\r\n    \"taxTotal\" : \"20000\",\t\t\t\t\t// [필수] 세액 합계\r\n    \"totalAmount\" : \"220000\",\t\t\t\t// [필수] 합계금액 (공급가액 합계+세액합계)\r\n\r\n    \"serialNum\" : \"123\",\t\t\t\t\t// 기재상 일련번호 항목\r\n    \"remark1\" : \"비고1\",\r\n    \"remark2\" : \"비고2\",\r\n    \"remark3\" : \"비고3\",\r\n\r\n    \"businessLicenseYN\" : false,\t\t\t//사업자등록증 첨부 여부\r\n    \"bankBookYN\" : false,\t\t\t\t\t//통장사본 첨부 여부\r\n    \"smssendYN\" : false,\t\t\t\t\t//발행시 안내문자 전송여부\r\n\r\n    \"detailList\": [\r\n        {\r\n            // 일련번호\r\n            // └ 1부터 순차적으로 입력 (최대 99)\r\n            \"serialNum\": 1,\r\n\r\n            // 거래일자\r\n            // └ 형식 : yyyyMMdd\r\n            \"purchaseDT\": \"20201006\",\r\n\r\n            // 품명\r\n            \"itemName\": \"Item Name 01\",\r\n\r\n            // 규격\r\n            \"spec\": \"spec\",\r\n\r\n            // 수량\r\n            // └ 소수점 아래 2번째 자리까지 입력 가능\r\n            // └ 마이너스 입력 가능\r\n            \"qty\": \"1\",\r\n\r\n            // 단가\r\n            // └ 소수점 아래 2번째 자리까지 입력 가능\r\n            // └ 마이너스 금액 입력 가능\r\n            \"unitCost\": \"110000\",\r\n\r\n            // 공급가액\r\n            // └ 정수만 입력 가능\r\n            // └ 마이너스 금액 입력 가능, 소수점 아래 자동 절사\r\n            \"supplyCost\": \"100000\",\r\n\r\n            // 세액\r\n            // └ 정수만 입력 가능\r\n            // └ 마이너스 금액 입력 가능, 소수점 아래 자동 절사\r\n            \"tax\": \"10000\",\r\n\r\n            // 비고\r\n            \"remark\": \"Item reamrk\"\r\n        },\r\n        {\r\n            \"serialNum\": 2,\r\n            \"purchaseDT\": \"20201006\",\r\n            \"itemName\": \"Item Name 02\",\r\n            \"spec\": \"spec\",\r\n            \"qty\": \"1\",\r\n            \"unitCost\": \"110000\",\r\n            \"supplyCost\": \"100000\",\r\n            \"tax\": \"10000\",\r\n            \"remark\": \"Item reamrk\"\r\n        }\r\n    ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement"
+					]
+				},
+				"description": "ㆍSend an e-Statement by fax without registration in POPBiLL. User can directly send a fax with the statement data stored in their system.\n\nㆍThe user can check the result of sending fax on POPBiLL website [문자·팩스(Messaging/FAX) -> 팩스(FAX) -> 전송내역(Sending log)].\n\nhttps://docs.popbill.com/en/statement/java/api#FAXSend"
+			},
+			"response": []
+		},
+		{
+			"name": "AttachStatement",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							"",
+							"",
+							"//전자명세서 문서유형 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1",
+							"//└ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"var itemCode = '121'",
+							"pm.collectionVariables.set(\"AttachStatement_ItemCode\", itemCode);",
+							"",
+							"// 전자명세서를 첨부할 전자명세서 문서번호",
+							"var invoicerMgtKey = '20211130_001';",
+							"pm.collectionVariables.set(\"AttachStatement_MgtKey\", invoicerMgtKey);",
+							"",
+							"// 전자명세서 정보",
+							"var reqBodyObj = {",
+							"  //첨부할 전자명세서의 명세서 코드 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1",
+							"  //└ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"  ItemCode : '121',",
+							"",
+							"  // 첨부할 전자명세서 문서번호",
+							"  MgtKey : '20211130_002', ",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"AttachStatement_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "SMS"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{AttachStatement_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{AttachStatement_ItemCode}}/{{AttachStatement_MgtKey}}/AttachStmt",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{AttachStatement_ItemCode}}",
+						"{{AttachStatement_MgtKey}}",
+						"AttachStmt"
+					]
+				},
+				"description": "ㆍAttach a statement issued through POPBiLL to the e-Statement.\n\nhttps://docs.popbill.com/en/statement/java/api#AttachStatement"
+			},
+			"response": []
+		},
+		{
+			"name": "DetachStatement",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * API 호출전 GetToken을 실행해야 합니다.",
+							" * GetToken을 실행하면 Bearer Token 인증에 사용되는 토큰이 Collection Scope 변수에 저장됩니다.",
+							" */",
+							"",
+							"",
+							"//전자명세서 문서유형 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1",
+							"//└ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"var itemCode = '121'",
+							"pm.collectionVariables.set(\"DetachStatement_ItemCode\", itemCode);",
+							"",
+							"// 전자명세서를 첨부할 전자명세서 문서번호",
+							"var invoicerMgtKey = '20211130_001';",
+							"pm.collectionVariables.set(\"DetachStatement_MgtKey\", invoicerMgtKey);",
+							"",
+							"// 전자명세서 정보",
+							"var reqBodyObj = {",
+							"  //첨부할 전자명세서의 명세서 코드 : 121 / 122 / 123 / 124 / 125 / 126 중 택 1",
+							"  //└ 121 = 거래명세서, 122 = 청구서, 123 = 견적서, 124 = 발주서, 125 = 입금표, 126 = 영수증",
+							"  ItemCode : '121',",
+							"",
+							"  // 첨부할 전자명세서 문서번호",
+							"  MgtKey : '20211130_002', ",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"DetachStatement_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "SMS"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{DetachStatement_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Statement/{{DetachStatement_ItemCode}}/{{DetachStatement_MgtKey}}/DetachStmt",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Statement",
+						"{{DetachStatement_ItemCode}}",
+						"{{DetachStatement_MgtKey}}",
+						"DetachStmt"
+					]
+				},
+				"description": "ㆍDetach a statement issued through POPBiLL from the e-Statement.\n\nhttps://docs.popbill.com/en/statement/java/api#DetachStatement"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "Search_DType",
+			"value": ""
+		},
+		{
+			"key": "Search_EDate",
+			"value": ""
+		},
+		{
+			"key": "Search_ItemCode",
+			"value": ""
+		},
+		{
+			"key": "Search_Order",
+			"value": ""
+		},
+		{
+			"key": "Search_Page",
+			"value": ""
+		},
+		{
+			"key": "Search_PerPage",
+			"value": ""
+		},
+		{
+			"key": "Search_QString",
+			"value": ""
+		},
+		{
+			"key": "Search_SDate",
+			"value": ""
+		},
+		{
+			"key": "Search_State",
+			"value": ""
+		}
+	]
+}

@@ -1,0 +1,2780 @@
+{
+	"info": {
+		"_postman_id": "e502fbbe-9a76-4b19-8545-ee1062ac5e9c",
+		"name": "Common Popbill Taxinvoice API",
+		"description": "When you call GetToken Request, the token used for Bearer authentication is stored in the variable of Collection Scope.\n\n\nSo, You must always call GetToken to test the API.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "GetToken",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/*********************************************************************************",
+							" *",
+							" * GetToken is a sample code that issues a Bearer token to be entered in ",
+							" * the Authentication header when calling the POPBiLL API.",
+							" * ",
+							" * (See the POPBILL API Certificate PDF Manual for more information)",
+							" *",
+							" **********************************************************************************/",
+							"",
+							"// The LinkID and SecretKey are credentials and are changed to the values ​​provided by POPBiLL.",
+							"var LinkID = 'TESTER';  // ex. 'LINKHUB'",
+							"var SecretKey = 'SwWxqU+0TErBXy/9TVjIPEnI0VTUMMSQZtJf3Ed8q3I='; //ex. 'CAuU7dpL4viqfoT6G+HJjqWzHhg3hRDD5sKIkp7Yqwc='",
+							"",
+							"/*",
+							" * The following code is that makes up the HMAC Message Digest ",
+							" */",
+							"",
+							"// access_id is the Seller Business Registration Number (10 digits number except hyphen('-'))",
+							"// and the Scope array is a list of service codes that can be used for the issued token. ",
+							"// (110 means POPBiLL e-Tax Invoice API.)",
+							"var Access_id = '1234567890'; // Business Registration Number.",
+							"var Scopes = ['member', '110'];",
+							"var TokenRequest = stringify({access_id : Access_id, scope : Scopes});",
+							"var Body = CryptoJS.SHA256(TokenRequest).toString(CryptoJS.enc.Base64);",
+							"",
+							"var RequestDT = new Date().toISOString();",
+							"",
+							"var digestTarget =",
+							"      'POST\\n' +",
+							"      Body + '\\n' +",
+							"      RequestDT +'\\n' +",
+							"      '*\\n' +",
+							"      '2.0\\n' +",
+							"      '/POPBILL_TEST/Token';",
+							"",
+							"var HMACDigest = generateSignature(digestTarget, SecretKey);",
+							"var Authorization = 'LINKHUB '+LinkID + ' '+HMACDigest;",
+							"",
+							"// request header for API Server HMAC authentication.",
+							"pm.collectionVariables.set(\"DateTime\", RequestDT);",
+							"pm.collectionVariables.set(\"TokenRequest\", TokenRequest);",
+							"pm.collectionVariables.set(\"Authorization\", Authorization);",
+							"",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}",
+							"",
+							"function generateSignature(message, key) {",
+							"    var keyDec = CryptoJS.enc.Base64.parse(key)",
+							"    var enc = CryptoJS.HmacSHA256(message, keyDec).toString(CryptoJS.enc.Base64);",
+							"    return enc;",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.collectionVariables.clear();",
+							"",
+							"if(pm.response.code == 200 ) {",
+							"    pm.collectionVariables.set(\"API_Session_Token\",'Bearer ' +  pm.response.json().session_token);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-lh-date",
+						"value": "{{DateTime}}",
+						"type": "text"
+					},
+					{
+						"key": "x-lh-version",
+						"value": "2.0",
+						"type": "text"
+					},
+					{
+						"key": "Connection",
+						"value": "close",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{Authorization}}",
+						"type": "text"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					},
+					{
+						"key": "x-lh-forwarded",
+						"value": "*",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{TokenRequest}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-auth.linkhub.co.kr/POPBILL_TEST/Token",
+					"protocol": "https",
+					"host": [
+						"ga-auth",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"POPBILL_TEST",
+						"Token"
+					]
+				},
+				"description": "Request Token for POPBiLL API."
+			},
+			"response": []
+		},
+		{
+			"name": "CheckMgtKeyInUse",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// The invoice ID is a unique value assigned by user to avoid duplicated issuance and organized e-Tax invoices systematically",
+							"var invoicerMgtKey = '20210629-01'",
+							"pm.collectionVariables.set(\"CheckMgtKeyinUse_invoicerMgtKey\", invoicerMgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{CheckMgtKeyinUse_invoicerMgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{CheckMgtKeyinUse_invoicerMgtKey}}"
+					]
+				},
+				"description": "Check whether an invoice ID is in use or not.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#CheckMgtKeyInUse"
+			},
+			"response": []
+		},
+		{
+			"name": "RegistIssue",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{API_Session_Token}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pb-userid",
+						"value": "testkorea",
+						"type": "text"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"value": "ISSUE",
+						"type": "text"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "/*\n*\n* Object of e-Tax invoice\n*\n* A more detailed explanation can be found from the link below.\n* - https://docs.popbill.com/en/taxinvoice/java/api#Taxinvoice\n*\n*/\n\n{\n    //\tWhether user permits to issue an overdued e-Tax invoice or not\n    // └ false = Do not (default) , true = Do\n    \"forceIssue\" : false,\n\n    // Title of notification mail sent to customer \n    // - Default: a title POPBiLL set in advance\n    \"emailSubject\": \"\",\n\n    // Memo for user's convenience \n    // - invisible to customer\n    \"memo\": \"RegistIssue Memo\",\n\n    // Date of preparation \n    // - Format : yyyyMMdd\n    \"writeDate\": \"20210629\",\n\n    // Charging Direction \n    // - Valid Value : 정과금 = Paid by seller\n    \"chargeDirection\": \"정과금\",\n\n    // Issuance Type - Valid Value : 정발행 = e-Tax invoice\n    \"issueType\": \"정발행\",\n\n    // Taxation Type\n    // └ Valid Value : 과세 / 영세 / 면세\n    // └ 과세 = Taxable, 영세 = Zero-rate, 면세 = Exempted\n    \"taxType\": \"과세\",\n\n    // [Seller] Business Registration Number\n    // └ 10 digits number except hyphen('-')\n    \"invoicerCorpNum\": \"1234567890\",\n\n    // [Seller] Invoice ID assigned by user (No redundancy)\n    // └ An unique value to combine English letter, number, hyphen('-')\n    \"invoicerMgtKey\": \"20210629-03\",\n\n    // [Seller] Identification Number for minor place of business\n    // └ 4 digits number\n    \"invoicerTaxRegID\": \"\",\n\n    // [Seller] Name of Company\n    \"invoicerCorpName\": \"Seller Company Name\",\n\n    // [Seller] Name of Representative\n    \"invoicerCEOName\": \"Seller Company's CEO Name\",\n\n    // [Seller] Company Address\n    \"invoicerAddr\": \"Seller Address\",\n\n    // [Seller] Business Item\n    \"invoicerBizClass\": \"Seller Business Class\",\n\n    // [Seller] Business Type\n    \"invoicerBizType\": \"Seller Business Type\",\n\n    // [Seller] Name of the person in charg\n    \"invoicerContactName\": \"Business Contractor Name\",\n\n    // [Seller] Telephone of the person in charge\n    \"invoicerTEL\": \"070-4304-2991\",\n\n    // [Seller] Mobile of the person in charge\n    \"invoicerHP\": \"010-111-222\",\n\n    // [Seller] Email address of the person in charge\n    \"invoicerEmail\": \"seller@test.com\",\n\n    // [Seller] Whether you send a notification SMS or not to buyer's mobile(no. 48 invoiceeHP1) issuing an e-Tax invoice.\n    // └ true = send, false = not send\n    // └ Fee is charged to every SMS and is refunded if sending fails.\n    \"invoicerSMSSendYN\": false,\n\n    // Buyer Type\n    // └ Valid Value : 사업자 / 개인 / 외국인\n    // └ 사업자 = company, 개인 = individual, 외국인 = foreigner\n    \"invoiceeType\": \"사업자\",\n\n    // [Buyer] Business Registration Number\n    // └ It must be synchronized with {no. 36 invoiceeType}\n    // └ Company: Business registration number (10 digits except '-')\n    // └ Individual: Resident registration number (13 digits except '-')\n    // └ Foreigner: \"9999999999999\"(13 digits except '-')\n    \"invoiceeCorpNum\": \"8888888888\",\n\n    // [Buyer] Identification Number for minor place of business\n    // └ 4 digits number\n    \"invoiceeTaxRegID\": \"\",\n\n    // [Buyer] Name of Company\n    \"invoiceeCorpName\": \"Buyer Corp Name\",\n\n    // [Buyer] Name of Representative\n    \"invoiceeCEOName\": \"Buyer Corp CEO Name\",\n\n    // [Buyer] Company Address\n    \"invoiceeAddr\": \"Buyer Address\",\n\n    // [Buyer] Business Item\n    \"invoiceeBizClass\": \"Buyer Business Class\",\n\n    // [Buyer] Business Type\n    \"invoiceeBizType\": \"Buyer Business Type\",\n\n    // [Buyer] Name of the person in charge\n    \"invoiceeContactName1\": \"Buyer Contacter Name\",\n\n    // [Buyer] Telephone of the person in charge\n    \"invoiceeTEL1\": \"070-111-222\",\n\n    // [Buyer] Mobile of the person in charge\n    \"invoiceeHP1\": \"010-222-333\",\n\n    // [Buyer] Email address of the person in charge\n    \"invoiceeEmail1\": \"test@test.com\",\n\n    // It's only requires to 'requested e-Tax invoice'\n    \"invoiceeSMSSendYN\": null,\n\n    \n\n    // Sum of supply values\n    // └ Only positive(+)/negative(-) numbers and – (minus sign) are available\n    \"supplyCostTotal\": \"200000\",\n\n    // Sum of tax amount\n    // └ Only positive(+)/negative(-) numbers and – (minus sign) are available\n    \"taxTotal\": \"20000\",\n\n    // Total Amount\n    // └ sum of {no.10 supplyCostTotal} and {no.11 taxTotal}\n    // └ Only positive(+)/negative(-) numbers and – (minus sign) are available\n    \"totalAmount\": \"220000\",\n\n    // Modification Code\n    // └ Mandatory value for revised (tax) invoice\n    // └ Valid Value : 1 / 2 / 3 / 4 / 5 / 6\n    // 1 = Correction of errors, 2 = Change in supply values, 3 = Return,\n    // 4 = Cancellation of contract, 5 = Post opening of local letter of credit, 6 = Duplicated issuance\n    \"modifyCode\": null,\n\n    // Type of the total amount\n    // └ Valid Value : 영수 / 청구\n    // └ 영수 = Amount paid, 청구 = Amount due\n    \"purposeType\": \"영수\",\n\n    // One of e-Tax invoice's items to manage document – 'Serial number'\n    \"serialNum\": \"\",\n\n    // Payment Method – 'cash'\n    \"cash\": \"\",\n\n    // Payment Method – 'check'\n    \"chkBill\": \"\",\n\n    // Payment Method – 'credit'\n    \"credit\": \"\",\n\n    // Payment Method – 'note'\n    \"note\": \"\",\n    \n    // 1st Remark\n    // └ Mandatory in case of {no 36. invoiceeType} is \"외국인\" (foreigner).\n    // └ Need to put 'Alien Registration Number' or 'Passport Number'.\n    \"remark1\": \"remark 1\",\n\n    // 2nd Remark\n    \"remark2\": \"remark 2\",\n\n    // 3rd Remark\n    \"remark3\": \"remark 3\",\n\n    // Whether you attach registered business license\n    // └ true : attach, false : not attach(Default)     \n    \"businessLicenseYN\": false,\n\n    // Whether you attach registered copy of bankbook\n    // └ true : attach, false : not attach(Default)\n    \"bankBookYN\": false,\n\n    // [List] Detailed list of items (Maximum : 99 lists)\n    \"detailList\": [\n        {\n            // Serial Number\n            // └ Must write the number in a row starting from 1 (Maximum : 99)\n            \"serialNum\": 1,\n\n            // Date of preparation\n            // └ Format : yyyyMMdd\n            \"purchaseDT\": \"20201006\",\n\n            // Item name\n            \"itemName\": \"Item Name 01\",\n\n            // Specification\n            \"spec\": \"spec\",\n\n            // Quantity\n            // └ Available to two decimal places\n            // └ Minus(Negative) amount is available\n            \"qty\": \"1\",\n\n            // Unit price\n            // └ Available to two decimal places\n            // └ Minus(Negative) amount is available\n            \"unitCost\": \"110000\",\n\n            // Supply values\n            // └ Unavailable to decimal places\n            // └ Minus(Negative) amount is available\n            // └ Below the decimal point is rounded off\n            \"supplyCost\": \"100000\",\n\n            // Tax amount\n            // └ Unavailable to decimal places\n            // └ Minus(Negative) amount is available\n            // └ Below the decimal point is rounded off\n            \"tax\": \"10000\",\n\n            // Remark\n            \"remark\": \"Item reamrk\"\n        },\n        {\n            \"serialNum\": 2,\n            \"purchaseDT\": \"20201006\",\n            \"itemName\": \"Item Name 02\",\n            \"spec\": \"spec\",\n            \"qty\": \"1\",\n            \"unitCost\": \"110000\",\n            \"supplyCost\": \"100000\",\n            \"tax\": \"10000\",\n            \"remark\": \"Item reamrk\"\n        }\n    ],\n\n    // [List] To send notification mails to multiple person in charge (Maximum : 5)\n    \"addContactList\": [\n        {\n            // Serial Number\n            // └ Must write the number in a row starting from 1 (Maximum : 5)\n            \"serialNum\": 1,\n\n            // Email\n            \"email\": \"test@test.com\",\n\n            // Name of the person in charge\n            \"contactName\": \"Buyer Contacter Addtion 01\"\n        },\n        {\n            // Serial Number\n            // └ Must write the number in a row starting from 1 (Maximum : 5)\n            \"serialNum\": 2,\n\n            // Email\n            \"email\": \"test@test.com\",\n\n            // Name of the person in charge\n            \"contactName\": \"Buyer Contacter Addtion 02\"\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice"
+					]
+				},
+				"description": "Regist and Issue the e-Tax invoice making e-Signature. \n\nAt the same time of issuance, points(fee) is charged and notification mail is sent to customer.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#RegistIssue"
+			},
+			"response": []
+		},
+		{
+			"name": "BulkSubmit",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Submission ID",
+							"// └ an unique value combined English letter, numeric and hyphen(-)",
+							"// └ Maximum length : 36",
+							"var submitID = '20210629-02';",
+							"pm.collectionVariables.set(\"SubmitID\", submitID);",
+							"",
+							"// [List] Object of e-Tax invoice",
+							"var TaxinvoiceList = [];",
+							"",
+							"// BulkSubmit API can accept the issuance of 100 e-Tax invoice per submission",
+							"// Created 100 e-Tax invoice in a loop to help understand the BulkSubmit API.",
+							"for(var i=1; i<=10; i++){",
+							"",
+							"    // Object of e-Tax invoice",
+							"    // - https://docs.popbill.com/en/taxinvoice/java/api#Taxinvoice",
+							"    var Taxinvoice = {",
+							"",
+							"        // Title of notification mail sent to customer ",
+							"        // - Default: a title POPBiLL set in advance",
+							"        \"emailSubject\": \"\",",
+							"",
+							"        // Memo for user's convenience ",
+							"        // - invisible to customer",
+							"        \"memo\": \"RegistIssue Memo\",",
+							"",
+							"        // Date of preparation ",
+							"        // - Format : yyyyMMdd",
+							"        \"writeDate\": \"20210629\",",
+							"",
+							"        // Charging Direction ",
+							"        // - Valid Value : 정과금 = Paid by seller",
+							"        \"chargeDirection\": \"정과금\",",
+							"",
+							"        // Issuance Type - Valid Value : 정발행 = e-Tax invoice",
+							"        \"issueType\": \"정발행\",",
+							"",
+							"        // Taxation Type",
+							"        // └ Valid Value : 과세 / 영세 / 면세",
+							"        // └ 과세 = Taxable, 영세 = Zero-rate, 면세 = Exempted",
+							"        \"taxType\": \"과세\",",
+							"",
+							"        // [Seller] Business Registration Number",
+							"        // └ 10 digits number except hyphen('-')",
+							"        \"invoicerCorpNum\": \"1234567890\",",
+							"",
+							"        // [Seller] Invoice ID assigned by user (No redundancy)",
+							"        // └ An unique value to combine English letter, number, hyphen('-')",
+							"        // └ Maximum length : 24",
+							"        \"invoicerMgtKey\": submitID + \"-\" + i,",
+							"",
+							"        // [Seller] Identification Number for minor place of business",
+							"        // └ 4 digits number",
+							"        \"invoicerTaxRegID\": \"\",",
+							"",
+							"        // [Seller] Name of Company",
+							"        \"invoicerCorpName\": \"Seller Company Name\",",
+							"",
+							"        // [Seller] Name of Representative",
+							"        \"invoicerCEOName\": \"Seller Company's CEO Name\",",
+							"",
+							"        // [Seller] Company Address",
+							"        \"invoicerAddr\": \"Seller Address\",",
+							"",
+							"        // [Seller] Business Item",
+							"        \"invoicerBizClass\": \"Seller Business Class\",",
+							"",
+							"        // [Seller] Business Type",
+							"        \"invoicerBizType\": \"Seller Business Type\",",
+							"",
+							"        // [Seller] Name of the person in charg",
+							"        \"invoicerContactName\": \"Business Contractor Name\",",
+							"",
+							"        // [Seller] Telephone of the person in charge",
+							"        \"invoicerTEL\": \"070-4304-2991\",",
+							"",
+							"        // [Seller] Mobile of the person in charge",
+							"        \"invoicerHP\": \"010-111-222\",",
+							"",
+							"        // [Seller] Email address of the person in charge",
+							"        \"invoicerEmail\": \"seller@test.com\",",
+							"",
+							"        // [Seller] Whether you send a notification SMS or not to buyer's mobile(no. 48 invoiceeHP1) issuing an e-Tax invoice.",
+							"        // └ true = send, false = not send",
+							"        // └ Fee is charged to every SMS and is refunded if sending fails.",
+							"        \"invoicerSMSSendYN\": false,",
+							"",
+							"        // Buyer Type",
+							"        // └ Valid Value : 사업자 / 개인 / 외국인",
+							"        // └ 사업자 = company, 개인 = individual, 외국인 = foreigner",
+							"        \"invoiceeType\": \"사업자\",",
+							"",
+							"        // [Buyer] Business Registration Number",
+							"        // └ It must be synchronized with {no. 36 invoiceeType}",
+							"        // └ Company: Business registration number (10 digits except '-')",
+							"        // └ Individual: Resident registration number (13 digits except '-')",
+							"        // └ Foreigner: \"9999999999999\"(13 digits except '-')",
+							"        \"invoiceeCorpNum\": \"8888888888\",",
+							"",
+							"        // [Buyer] Identification Number for minor place of business",
+							"        // └ 4 digits number",
+							"        \"invoiceeTaxRegID\": \"\",",
+							"",
+							"        // [Buyer] Name of Company",
+							"        \"invoiceeCorpName\": \"Buyer Corp Name\",",
+							"",
+							"        // [Buyer] Name of Representative",
+							"        \"invoiceeCEOName\": \"Buyer Corp CEO Name\",",
+							"",
+							"        // [Buyer] Company Address",
+							"        \"invoiceeAddr\": \"Buyer Address\",",
+							"",
+							"        // [Buyer] Business Item",
+							"        \"invoiceeBizClass\": \"Buyer Business Class\",",
+							"",
+							"        // [Buyer] Business Type",
+							"        \"invoiceeBizType\": \"Buyer Business Type\",",
+							"",
+							"        // [Buyer] Name of the person in charge",
+							"        \"invoiceeContactName1\": \"Buyer Contacter Name\",",
+							"",
+							"        // [Buyer] Telephone of the person in charge",
+							"        \"invoiceeTEL1\": \"070-111-222\",",
+							"",
+							"        // [Buyer] Mobile of the person in charge",
+							"        \"invoiceeHP1\": \"010-222-333\",",
+							"",
+							"        // [Buyer] Email address of the person in charge",
+							"        \"invoiceeEmail1\": \"\",",
+							"",
+							"        // It's only requires to 'requested e-Tax invoice'",
+							"        \"invoiceeSMSSendYN\": null,",
+							"",
+							"        ",
+							"",
+							"        // Sum of supply values",
+							"        // └ Only positive(+)/negative(-) numbers and – (minus sign) are available",
+							"        \"supplyCostTotal\": \"200000\",",
+							"",
+							"        // Sum of tax amount",
+							"        // └ Only positive(+)/negative(-) numbers and – (minus sign) are available",
+							"        \"taxTotal\": \"20000\",",
+							"",
+							"        // Total Amount",
+							"        // └ sum of {no.10 supplyCostTotal} and {no.11 taxTotal}",
+							"        // └ Only positive(+)/negative(-) numbers and – (minus sign) are available",
+							"        \"totalAmount\": \"220000\",",
+							"",
+							"        // Modification Code",
+							"        // └ Mandatory value for revised (tax) invoice",
+							"        // └ Valid Value : 1 / 2 / 3 / 4 / 5 / 6",
+							"        // 1 = Correction of errors, 2 = Change in supply values, 3 = Return,",
+							"        // 4 = Cancellation of contract, 5 = Post opening of local letter of credit, 6 = Duplicated issuance",
+							"        \"modifyCode\": null,",
+							"",
+							"        // Type of the total amount",
+							"        // └ Valid Value : 영수 / 청구",
+							"        // └ 영수 = Amount paid, 청구 = Amount due",
+							"        \"purposeType\": \"영수\",",
+							"",
+							"        // One of e-Tax invoice's items to manage document – 'Serial number'",
+							"        \"serialNum\": \"\",",
+							"",
+							"        // Payment Method – 'cash'",
+							"        \"cash\": \"\",",
+							"",
+							"        // Payment Method – 'check'",
+							"        \"chkBill\": \"\",",
+							"",
+							"        // Payment Method – 'credit'",
+							"        \"credit\": \"\",",
+							"",
+							"        // Payment Method – 'note'",
+							"        \"note\": \"\",",
+							"        ",
+							"        // 1st Remark",
+							"        // └ Mandatory in case of {no 36. invoiceeType} is \"외국인\" (foreigner).",
+							"        // └ Need to put 'Alien Registration Number' or 'Passport Number'.",
+							"        \"remark1\": \"remark 1\",",
+							"",
+							"        // 2nd Remark",
+							"        \"remark2\": \"remark 2\",",
+							"",
+							"        // 3rd Remark",
+							"        \"remark3\": \"remark 3\",",
+							"",
+							"        // Whether you attach registered business license",
+							"        // └ true : attach, false : not attach(Default)     ",
+							"        \"businessLicenseYN\": false,",
+							"",
+							"        // Whether you attach registered copy of bankbook",
+							"        // └ true : attach, false : not attach(Default)",
+							"        \"bankBookYN\": false,",
+							"",
+							"        // [List] Detailed list of items (Maximum : 99 lists)",
+							"        \"detailList\": [",
+							"            {",
+							"                // Serial Number",
+							"                // └ Must write the number in a row starting from 1 (Maximum : 99)",
+							"                \"serialNum\": 1,",
+							"",
+							"                // Date of preparation",
+							"                // └ Format : yyyyMMdd",
+							"                \"purchaseDT\": \"20210629\",",
+							"",
+							"                // Item name",
+							"                \"itemName\": \"Item Name 01\",",
+							"",
+							"                // Specification",
+							"                \"spec\": \"spec\",",
+							"",
+							"                // Quantity",
+							"                // └ Available to two decimal places",
+							"                // └ Minus(Negative) amount is available",
+							"                \"qty\": \"1\",",
+							"",
+							"                // Unit price",
+							"                // └ Available to two decimal places",
+							"                // └ Minus(Negative) amount is available",
+							"                \"unitCost\": \"110000\",",
+							"",
+							"                // Supply values",
+							"                // └ Unavailable to decimal places",
+							"                // └ Minus(Negative) amount is available",
+							"                // └ Below the decimal point is rounded off",
+							"                \"supplyCost\": \"100000\",",
+							"",
+							"                // Tax amount",
+							"                // └ Unavailable to decimal places",
+							"                // └ Minus(Negative) amount is available",
+							"                // └ Below the decimal point is rounded off",
+							"                \"tax\": \"10000\",",
+							"",
+							"                // Remark",
+							"                \"remark\": \"Item reamrk\"",
+							"            },",
+							"            {",
+							"                \"serialNum\": 2,",
+							"                \"purchaseDT\": \"20210629\",",
+							"                \"itemName\": \"Item Name 02\",",
+							"                \"spec\": \"spec\",",
+							"                \"qty\": \"1\",",
+							"                \"unitCost\": \"110000\",",
+							"                \"supplyCost\": \"100000\",",
+							"                \"tax\": \"10000\",",
+							"                \"remark\": \"Item reamrk\"",
+							"            }",
+							"        ],",
+							"",
+							"        // [List] To send notification mails to multiple person in charge (Maximum : 5)",
+							"        \"addContactList\": [",
+							"            {",
+							"                // Serial Number",
+							"                // └ Must write the number in a row starting from 1 (Maximum : 5)",
+							"                \"serialNum\": 1,",
+							"",
+							"                // Email",
+							"                \"email\": \"test@test.com\",",
+							"",
+							"                // Name of the person in charge",
+							"                \"contactName\": \"Buyer Contacter Addtion 01\"",
+							"            },",
+							"            {",
+							"                // Serial Number",
+							"                // └ Must write the number in a row starting from 1 (Maximum : 5)",
+							"                \"serialNum\": 2,",
+							"",
+							"                // Email",
+							"                \"email\": \"test@test.com\",",
+							"",
+							"                // Name of the person in charge",
+							"                \"contactName\": \"Buyer Contacter Addtion 02\"",
+							"            }",
+							"        ]",
+							"    }",
+							"",
+							"    TaxinvoiceList.push(Taxinvoice);",
+							"}",
+							"",
+							"",
+							"// BulkSubmit API - POST Request Body object",
+							"var RequestBody = {",
+							"",
+							"    //\tWhether user permits to issue an overdued e-Tax invoice or not",
+							"    // └ true = Do, false = Do not",
+							"    forceIssue : false,",
+							"",
+							"    // [List] Object of e-Tax invoice",
+							"    invoices : TaxinvoiceList",
+							"};",
+							"",
+							"",
+							"function stringify(obj) {",
+							"    return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}",
+							"",
+							"function getSHA1Base64(input){",
+							"    return CryptoJS.SHA1(input).toString(CryptoJS.enc.Base64);",
+							"}",
+							"",
+							"pm.collectionVariables.set(\"BulkRequestBody\", stringify(RequestBody));",
+							"",
+							"// Generate a Message digest for Request Body message validation",
+							"// - base64encode(sha1(requestBody))",
+							"var MessageDigest = getSHA1Base64(stringify(RequestBody));",
+							"pm.collectionVariables.set(\"BulkMessageDigest\", MessageDigest);",
+							"",
+							"",
+							"",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "BULKISSUE"
+					},
+					{
+						"key": "x-pb-submit-id",
+						"value": "{{SubmitID}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pb-message-digest",
+						"value": "{{BulkMessageDigest}}",
+						"type": "text"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{BulkRequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice"
+					]
+				},
+				"description": "Submit the issuance of bulk invoices. A single request processes maximum 100 invoices at once\n\n\nDuplicated submission ID and e-Tax invoice data are not accepted and it’s handled as returning registered submission ID, not the error code and message\n\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#BulkSubmit"
+			},
+			"response": []
+		},
+		{
+			"name": "GetBulkResult",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Assigned submitID for the bulk submit",
+							"var submitID = '20210629-01';",
+							"pm.collectionVariables.set(\"GetBulkResult_submitID\", submitID);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/BULK/{{GetBulkResult_submitID}}/State",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"BULK",
+						"{{GetBulkResult_submitID}}",
+						"State"
+					]
+				},
+				"description": "Check the submission status for bulk issuance using SubmitID.\n\n\nThe issuance result is returned when the submission status(variable: txState) is changed to '2'(successfully completed).\n\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetBulkResult"
+			},
+			"response": []
+		},
+		{
+			"name": "CancelIssue",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Invoice ID to Cancel issuance",
+							"var invoicerMgtKey = '20210629-01';",
+							"pm.collectionVariables.set(\"CancelIssue_invoicerMgtKey\", invoicerMgtKey);",
+							"",
+							"// Memo for user's convenience",
+							"// └ invisible to customer",
+							"var reqBodyObj = {",
+							"  memo : 'Memo'",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"CancelIssue_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}",
+							"",
+							"",
+							"",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "CANCELISSUE"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{CancelIssue_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{CancelIssue_invoicerMgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{CancelIssue_invoicerMgtKey}}"
+					]
+				},
+				"description": "Cancel the issuance of e-Tax invoice in the state of 'ISSUED' before filing starts. \n\nIt's impossible to cancel in other cases except 'ISSUED'.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#CancelIssue"
+			},
+			"response": []
+		},
+		{
+			"name": "Delete",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Invoice ID to Delete",
+							"var invoicerMgtKey = '20210629-01';",
+							"pm.collectionVariables.set(\"Delete_invoicerMgtKey\", invoicerMgtKey);",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "DELETE"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{Delete_invoicerMgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{Delete_invoicerMgtKey}}"
+					]
+				},
+				"description": "Delete canceled e-Tax invoice in status of 'CANCELED'. \n\nAn invoice ID of deleted e-Tax invoice can be reused.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#Delete"
+			},
+			"response": []
+		},
+		{
+			"name": "SendToNTS",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Invoice ID to file to NTS",
+							"var invoicerMgtKey = '20210629-02';",
+							"pm.collectionVariables.set(\"SendToNTS_invoicerMgtKey\", invoicerMgtKey);",
+							"",
+							"// Memo for user's convenience",
+							"// └ invisible to customer",
+							"var reqBodyObj = {",
+							"  memo : 'memo' ",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"SendToNTS_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "NTS"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{SendToNTS_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{SendToNTS_invoicerMgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{SendToNTS_invoicerMgtKey}}"
+					]
+				},
+				"description": "File issued e-Tax invoice waiting for filing to NTS.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#SendToNTS"
+			},
+			"response": []
+		},
+		{
+			"name": "GetInfo",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// invoiceMgtKey to check the detail e-Tax invoice infomation",
+							"var invoicerMgtKey = '20210629-01'",
+							"pm.collectionVariables.set(\"GetDetailInfo_invoicerMgtKey\", invoicerMgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{GetDetailInfo_invoicerMgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{GetDetailInfo_invoicerMgtKey}}"
+					]
+				},
+				"description": "Check the status of a single e-Tax invoice and summarized information.\n\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetInfo"
+			},
+			"response": []
+		},
+		{
+			"name": "GetInfos",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// List of invoiceMgtKey to check the status (Maximum : 1000 invoices)",
+							"var InovicerMgtKeyList = ['20210629-01','20210629-02', '20210629-03']",
+							"pm.collectionVariables.set(\"GetInfo_InovicerMgtKeyList\", stringify(InovicerMgtKeyList));",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{GetInfo_InovicerMgtKeyList}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL"
+					]
+				},
+				"description": "Check the status of bulk e-Tax invoices and detailed information. (Maximum : 1,000 invoices)\n\nCheck variable 'stateCode' of returned 'TaxinvoiceInfo' to confirm status of e-Tax invoice.\n\nSee the links below for more information on the returned objects\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetInfos"
+			},
+			"response": []
+		},
+		{
+			"name": "GetDetailInfo",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// invoiceMgtKey to check the detail e-Tax invoice infomation",
+							"var invoicerMgtKey = '20210629-01'",
+							"pm.collectionVariables.set(\"GetDetailInfo_invoicerMgtKey\", invoicerMgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{GetDetailInfo_invoicerMgtKey}}?Detail",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{GetDetailInfo_invoicerMgtKey}}"
+					],
+					"query": [
+						{
+							"key": "Detail",
+							"value": null
+						}
+					]
+				},
+				"description": "Check detailed information of a single e-Tax invoice.\n\nSee the links below for more information on the returned objects\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetDetailInfo"
+			},
+			"response": []
+		},
+		{
+			"name": "GetXML",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// invoiceID to get XML",
+							"var invoicerMgtKey = '20220201-PB-057';",
+							"pm.collectionVariables.set(\"GetXML_invoicerMgtKey\", invoicerMgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{GetXML_invoicerMgtKey}}?XML",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{GetXML_invoicerMgtKey}}"
+					],
+					"query": [
+						{
+							"key": "XML",
+							"value": null
+						}
+					]
+				},
+				"description": "ㆍGet a XML to check detailed information of a single e-Tax invoice.\r\n\r\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetXML"
+			},
+			"response": []
+		},
+		{
+			"name": "Search",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"//",
+							"",
+							"// Date type in search criteria",
+							"// └ Valid Value : R / W / I",
+							"// └ R = Date of registration, W = of trading, I = of issuance",
+							"var DType = 'I'",
+							"pm.collectionVariables.set(\"Search_DType\", DType);",
+							"",
+							"// Initial date of search scope (Format : yyyyMMdd)",
+							"var SDate = '20210601'",
+							"pm.collectionVariables.set(\"Search_SDate\", SDate);",
+							"",
+							"// Last date of search scope (Format : yyyyMMdd)",
+							"var EDate = '20210629'",
+							"pm.collectionVariables.set(\"Search_EDate\", EDate);",
+							"",
+							"// [Array] e-Tax invoice status code",
+							"// └ Wild card(*) can be put on 2nd, 3rd letter – e.g. \"3**\", \"6**\"",
+							"var State = ['3**'];",
+							"pm.collectionVariables.set(\"Search_State\", State.join(','));",
+							"",
+							"// [Array] Type of e-Tax invoice",
+							"// └ Valid Value : N / M (multiple choice is possible)",
+							"// └ N = General, M = Revised e-Tax invoice",
+							"var Type = ['N','M'];",
+							"pm.collectionVariables.set(\"Search_Type\", Type.join(','));",
+							"",
+							"// [Array] Taxation Type",
+							"// └ Valid Value : T / N / Z (multiple choice is possible)",
+							"// └ T = Taxable, N = Exempted, Z = Zero-rate",
+							"var TaxType = ['T','N','Z'];",
+							"pm.collectionVariables.set(\"Search_TaxType\", TaxType.join(','));",
+							"",
+							"// [Array] Issuance Type",
+							"// └ Valid Value : N (Issued by seller)",
+							"var IssueType = ['N'];",
+							"pm.collectionVariables.set(\"Search_IssueType\", IssueType.join(','));",
+							"",
+							"// Whether e-Tax invoice is issued after the due or not",
+							"// └ Valid Value : null / true / false",
+							"// └ '' = all, true = issued after the due, false = issued within the due",
+							"var LateOnly = '';",
+							"pm.collectionVariables.set(\"Search_LateOnly\", LateOnly);",
+							"",
+							"// Type of the Business Registration Number of minor place",
+							"// └ Valid Value : S (Seller)",
+							"var TaxRegIDType = ['S'];",
+							"pm.collectionVariables.set(\"Search_TaxRegIDType\", TaxRegIDType.join(','));",
+							"",
+							"// Business Registration Number of minor place",
+							"// └ one more numbers must be separated by comma(',') (e.g. 1234, 1110)",
+							"var TaxRegID = [''];",
+							"pm.collectionVariables.set(\"Search_TaxRegID\", TaxRegID.join(','));",
+							"",
+							"// Whether the business registration number of minor place is enrolled or not",
+							"// └ Valid Value : '' / 0 / 1",
+							"// └  '' = all, 0 = None, 1 = Enrolled",
+							"var TaxRegIDYN = '';",
+							"pm.collectionVariables.set(\"Search_TaxRegIDYN\", TaxRegIDYN);",
+							"",
+							"// Name of Buyer Company / Business Registration Number (for company) / Residential Registration Number (for entrepreneur) / 9999999999999 (for foreigner)",
+							"// └ Do not enter hyphen('-')",
+							"var QString = '';",
+							"pm.collectionVariables.set(\"Search_QString\", QString);",
+							"",
+							"// Page number",
+							"// └ Default = 1",
+							"var Page = 1;",
+							"pm.collectionVariables.set(\"Search_Page\", Page);",
+							"",
+							"// The number of list to be displayed per page (Maximum : 1,000)",
+							"// └ Default = 500",
+							"var PerPage = 20;",
+							"pm.collectionVariables.set(\"Search_PerPage\", PerPage);",
+							"",
+							"// Sort direction (related to {@no.3 DType})",
+							"// └ Valid Value : D / A",
+							"// └ D = Descending(Default), A = Ascending",
+							"var Order = 'D';",
+							"pm.collectionVariables.set(\"Search_Order\", Order);",
+							"",
+							"// Whether e-Tax invoice is issued by API or not",
+							"// └ Valid Value : '' / 0 / 1",
+							"// └ '' = all, 0 = issued in POPBiLL website, 1 = issued by API",
+							"var InterOPYN = '';",
+							"pm.collectionVariables.set(\"Search_InterOPYN\", InterOPYN);",
+							"",
+							"// [Array] Registration type of e-Tax invoice",
+							"// └ Valid Value : P / H (multiple choice is possible)",
+							"// └ P = registered in POPBiLL, H = registered(issued) in Hometax or another ASP",
+							"var RegType = ['P','H'];",
+							"pm.collectionVariables.set(\"Search_RegType\", RegType.join(','));",
+							"",
+							"// [Array] Customer company status",
+							"// └ Valid Value : 0 / 1 / 2 / 3 / 4 (multiple choice is possible)",
+							"// └ 0 = Unregistered",
+							"// └ 1 = In business, 2 = Closed, 3 = Suspended, 4 = Failed to check",
+							"var CloseDownState = ['0','1','2','3','4'];",
+							"pm.collectionVariables.set(\"Search_CloseDownState\", CloseDownState.join(','));",
+							"",
+							"// Invoice ID or NTS Confirm number",
+							"// '' - all",
+							"var MgtKey = '';",
+							"pm.collectionVariables.set(\"Search_MgtKey\", MgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL?DType={{Search_DType}}&SDate={{Search_SDate}}&EDate={{Search_EDate}}&State={{Search_State}}&Type={{Search_Type}}&TaxType={{Search_TaxType}}&IssueType={{Search_IssueType}}&LateOnly={{Search_LateOnly}}&TaxRegIDType={{Search_TaxRegIDType}}&TaxRegID={{Search_TaxRegID}}&TaxRegIDYN={{Search_TaxRegIDYN}}&QString={{Search_QString}}&Page={{Search_Page}}&PerPage={{Search_PerPage}}&Order={{Search_Order}}&InterOPYN={{Search_InterOPYN}}&RegType={{Search_RegType}}&CloseDownState={{Search_CloseDownState}}&MgtKey={{Search_MgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL"
+					],
+					"query": [
+						{
+							"key": "DType",
+							"value": "{{Search_DType}}"
+						},
+						{
+							"key": "SDate",
+							"value": "{{Search_SDate}}"
+						},
+						{
+							"key": "EDate",
+							"value": "{{Search_EDate}}"
+						},
+						{
+							"key": "State",
+							"value": "{{Search_State}}"
+						},
+						{
+							"key": "Type",
+							"value": "{{Search_Type}}"
+						},
+						{
+							"key": "TaxType",
+							"value": "{{Search_TaxType}}"
+						},
+						{
+							"key": "IssueType",
+							"value": "{{Search_IssueType}}"
+						},
+						{
+							"key": "LateOnly",
+							"value": "{{Search_LateOnly}}"
+						},
+						{
+							"key": "TaxRegIDType",
+							"value": "{{Search_TaxRegIDType}}"
+						},
+						{
+							"key": "TaxRegID",
+							"value": "{{Search_TaxRegID}}"
+						},
+						{
+							"key": "TaxRegIDYN",
+							"value": "{{Search_TaxRegIDYN}}"
+						},
+						{
+							"key": "QString",
+							"value": "{{Search_QString}}"
+						},
+						{
+							"key": "Page",
+							"value": "{{Search_Page}}"
+						},
+						{
+							"key": "PerPage",
+							"value": "{{Search_PerPage}}"
+						},
+						{
+							"key": "Order",
+							"value": "{{Search_Order}}"
+						},
+						{
+							"key": "InterOPYN",
+							"value": "{{Search_InterOPYN}}"
+						},
+						{
+							"key": "RegType",
+							"value": "{{Search_RegType}}"
+						},
+						{
+							"key": "CloseDownState",
+							"value": "{{Search_CloseDownState}}"
+						},
+						{
+							"key": "MgtKey",
+							"value": "{{Search_MgtKey}}"
+						}
+					]
+				},
+				"description": "ㆍSearch e-Tax invoices corresponded to the search criteria.\nㆍDefault of optional fields is to 'search all'.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#Search"
+			},
+			"response": []
+		},
+		{
+			"name": "GetLogs",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// \tInvoice ID",
+							"var invoicerMgtKey = '20210629-02'",
+							"pm.collectionVariables.set(\"GetLogs_invoicerMgtKey\", invoicerMgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{GetLogs_invoicerMgtKey}}/Logs",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{GetLogs_invoicerMgtKey}}",
+						"Logs"
+					]
+				},
+				"description": "ㆍCheck the log of e-Tax invoice's status change.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetLogs"
+			},
+			"response": []
+		},
+		{
+			"name": "GetURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Targeted Menu",
+							"// └ Valid Value : TBOX / SBOX / PBOX / WRITE",
+							"// └ TBOX = Draft list, SBOX = Sales list, PBOX = Purchase list, WRTIE = Create an e-Tax invoice",
+							"var TOGO = '20210629-02'",
+							"pm.collectionVariables.set(\"GetURL_TOGO\", TOGO);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/?TG={{GetURL_TOGO}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						""
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "{{GetURL_TOGO}}"
+						}
+					]
+				},
+				"description": "ㆍGet the URL to access the menu related to e-Tax invoice of POPBiLL website in login status.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetPopUpURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Invoice ID",
+							"var invoicerMgtKey = '20210629-02'",
+							"pm.collectionVariables.set(\"GetPopUpURL_invoicerMgtKey\", invoicerMgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{GetPopUpURL_invoicerMgtKey}}?TG=POPUP",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{GetPopUpURL_invoicerMgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "POPUP"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to view a single e-Tax invoice on POPBiLL website.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetPopUpURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetViewURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Invoice ID",
+							"var invoicerMgtKey = '20210629-02'",
+							"pm.collectionVariables.set(\"GetViewURL_invoicerMgtKey\", invoicerMgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{GetViewURL_invoicerMgtKey}}?TG=VIEW",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{GetViewURL_invoicerMgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "VIEW"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to view a single e-Tax invoice on POPBiLL website (showing a page without menus and buttons)\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetViewURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetPrintURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Invoice ID",
+							"var invoicerMgtKey = '20210629-02'",
+							"pm.collectionVariables.set(\"GetPrintURL_invoicerMgtKey\", invoicerMgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{GetPrintURL_invoicerMgtKey}}?TG=PRINT",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{GetPrintURL_invoicerMgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "PRINT"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to print a single e-Tax invoice. User can select a print option - for seller/buyer/both.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetPrintURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetEPrintURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Invoice ID",
+							"var invoicerMgtKey = '20210629-02'",
+							"pm.collectionVariables.set(\"GetEPrintURL_invoicerMgtKey\", invoicerMgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{GetEPrintURL_invoicerMgtKey}}?TG=EPRINT",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{GetEPrintURL_invoicerMgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "EPRINT"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to print a single e-Tax invoice for buyer.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetEPrintURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetMassPrintURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// List of invoiceMgtKey to check the status (Maximum : 1000 invoices)",
+							"var InovicerMgtKeyList = ['20210629-01','20210629-02', '20210629-03']",
+							"pm.collectionVariables.set(\"GetMassPrintURL_InovicerMgtKeyList\", stringify(InovicerMgtKeyList));",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{GetMassPrintURL_InovicerMgtKeyList}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL?Print",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL"
+					],
+					"query": [
+						{
+							"key": "Print",
+							"value": null
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to print e-Tax invoices in bulk. (Maximum: 100 invoices)\n\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetMassPrintURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetMailURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Invoice ID",
+							"var invoicerMgtKey = '20210629-02'",
+							"pm.collectionVariables.set(\"GetMailURL_invoicerMgtKey\", invoicerMgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{GetMailURL_invoicerMgtKey}}?TG=PRINT",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{GetMailURL_invoicerMgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "PRINT"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL of button located on bottom of a notification mail sent to buyer. User can access the page to check e-Tax invoice in detail.\n\nㆍThere is no valid time.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetMailURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetPDFURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Invoice ID",
+							"var invoicerMgtKey = '20210629-02'",
+							"pm.collectionVariables.set(\"GetPDFURL_invoicerMgtKey\", invoicerMgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{GetPDFURL_invoicerMgtKey}}?TG=PDF",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{GetPDFURL_invoicerMgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "PDF"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to download the e-Tax invoice in PDF format.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetPDFURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetAccessURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/?TG=LOGIN",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						""
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "LOGIN"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to download the e-Tax invoice in PDF format.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetPDFURL"
+			},
+			"response": []
+		},
+		{
+			"name": "SendEmail",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// invoiceID to Email Resend",
+							"var invoicerMgtKey = '20210629-02';",
+							"pm.collectionVariables.set(\"SendEmail_invoicerMgtKey\", invoicerMgtKey);",
+							"",
+							"// Receiver Email Address",
+							"var reqBodyObj = {",
+							"  receiver : 'test@test.com'",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"SendEmail_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "EMAIL"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{SendEmail_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{SendEmail_invoicerMgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{SendEmail_invoicerMgtKey}}"
+					]
+				},
+				"description": "Resend a notification mail to customer. There's no minimum time required and no maximum number of calling API.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#SendEmail"
+			},
+			"response": []
+		},
+		{
+			"name": "SendSMS",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// invoiceID ",
+							"var invoicerMgtKey = '20210629-02';",
+							"pm.collectionVariables.set(\"SendSMS_invoicerMgtKey\", invoicerMgtKey);",
+							"",
+							"// SMS Info.",
+							"var reqBodyObj = {",
+							"  receiver : '010-000-0000', // Receiver(Customer)'s Number",
+							"  sender : '070-1234-1234', // Sender's Number",
+							"  contents : 'test sms', // Contents of SMS, (*Exceeded contents are truncated automatically)",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"SendSMS_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "SMS"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{SendSMS_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{SendSMS_invoicerMgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{SendSMS_invoicerMgtKey}}"
+					]
+				},
+				"description": "ㆍSend a SMS(short message) to notify issuance of e-Tax invoice. To call this API, an additional cost is charged apart from the issuance cost.\n\nㆍUser can check the result of sending SMS on POPBiLL website [문자·팩스(Messaging/FAX) -> 문자(Messaging) -> 전송내역(Sending log)]\n\nㆍSMS's capacity is 90byte and exceeded contents are truncated automatically. (Maximum of Korean letters: 45)\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#SendSMS"
+			},
+			"response": []
+		},
+		{
+			"name": "SendFAX",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// invoiceID ",
+							"var invoicerMgtKey = '20210629-02';",
+							"pm.collectionVariables.set(\"SendFAX_invoicerMgtKey\", invoicerMgtKey);",
+							"",
+							"// FAX Info.",
+							"var reqBodyObj = {",
+							"  receiver : '010-000-0000', // Receiver(Customer)'s Number",
+							"  sender : '070-1234-1234', // Sender's Number",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"SendFAX_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "FAX"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{SendFAX_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{SendFAX_invoicerMgtKey}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{SendFAX_invoicerMgtKey}}"
+					]
+				},
+				"description": "ㆍSend issued e-Tax invoice by fax. To call this API, an additional cost is charged apart from the issuance cost.\n\nㆍUser can check the result of sending fax on POPBiLL website [문자·팩스(Messaging/FAX) -> 팩스(FAX) -> 전송내역(Sending log)].\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#SendFAX"
+			},
+			"response": []
+		},
+		{
+			"name": "AssignMgtKey",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// POPBiLL's invoice ID",
+							"// └ Enter returned value 'itemkey' as a result of calling function [2.4. Search]",
+							"// └ Refer {@no.7 list} of [A.11. TISearchResult]",
+							"var popbillItemKey = '021062915412000001'",
+							"pm.collectionVariables.set(\"AssignMgtKey_ItemKey\", popbillItemKey);",
+							"",
+							"// Invoice ID",
+							"var invoicerMgtKey = '0210629-21';",
+							"pm.collectionVariables.set(\"AssignMgtKey_InvoicerMgtKey\", invoicerMgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "MgtKey",
+							"value": "{{AssignMgtKey_InvoicerMgtKey}}",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/{{AssignMgtKey_ItemKey}}/SELL",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"{{AssignMgtKey_ItemKey}}",
+						"SELL"
+					]
+				},
+				"description": "ㆍAssign a document number(invoicerMgtKey) to e-Tax invoice issued in POPBiLL website manually.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#AssignMgtKey"
+			},
+			"response": []
+		},
+		{
+			"name": "AttachStatement",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// invoiceID ",
+							"var invoicerMgtKey = '20210629-02';",
+							"pm.collectionVariables.set(\"AttachStatement_invoicerMgtKey\", invoicerMgtKey);",
+							"",
+							"// Statement Info",
+							"var reqBodyObj = {",
+							"  // Type code of the statement",
+							"  // └ Valid Value : 121 / 122 / 123 / 124 / 125 / 126",
+							"  // └ 121 = Transaction details, 122 = Bill, 123 = Estimate, 124 = Purchase order, 125 = Deposit slip, 126 = Receipt",
+							"  ItemCode : '121',",
+							"",
+							"  // Statement ID ",
+							"  MgtKey : '20210629-PTEST101', ",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"AttachStatement_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "SMS"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{AttachStatement_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{AttachStatement_invoicerMgtKey}}/AttachStmt",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{AttachStatement_invoicerMgtKey}}",
+						"AttachStmt"
+					]
+				},
+				"description": "ㆍAttach a statement to the e-Tax invoice.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#AttachStatement"
+			},
+			"response": []
+		},
+		{
+			"name": "DetachStatement",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// invoiceID ",
+							"var invoicerMgtKey = '20210629-02';",
+							"pm.collectionVariables.set(\"DetachStatement_invoicerMgtKey\", invoicerMgtKey);",
+							"",
+							"// Statement Info",
+							"var reqBodyObj = {",
+							"  // Type code of the statement",
+							"  // └ Valid Value : 121 / 122 / 123 / 124 / 125 / 126",
+							"  // └ 121 = Transaction details, 122 = Bill, 123 = Estimate, 124 = Purchase order, 125 = Deposit slip, 126 = Receipt",
+							"  ItemCode : '121',",
+							"",
+							"  // Statement ID ",
+							"  MgtKey : '20210629-PTEST101', ",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"DetachStatement_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{DetachStatement_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/SELL/{{DetachStatement_invoicerMgtKey}}/DetachStmt",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"SELL",
+						"{{DetachStatement_invoicerMgtKey}}",
+						"DetachStmt"
+					]
+				},
+				"description": "ㆍDetach a statement from the e-Tax invoice.\n\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#DetachStatement"
+			},
+			"response": []
+		},
+		{
+			"name": "GetTaxCertURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/?TG=CERT",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						""
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "CERT"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to register the certificate to POPBiLL.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetTaxCertURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetCertificateExpireDate",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/?TG=CERT",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						""
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "CERT"
+						}
+					]
+				},
+				"description": "ㆍCheck certificate's expiration date registered in POPBiLL.\n\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#GetCertificateExpireDate"
+			},
+			"response": []
+		},
+		{
+			"name": "CheckCertValidation",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/Taxinvoice/CertCheck",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Taxinvoice",
+						"CertCheck"
+					]
+				},
+				"description": "ㆍCheck certificate's validity registered in POPBiLL.\n\nhttps://docs.popbill.com/en/taxinvoice/java/api#CheckCertValidation"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "API_Session_Token",
+			"value": ""
+		},
+		{
+			"key": "GetXML_invoicerMgtKey",
+			"value": ""
+		}
+	]
+}

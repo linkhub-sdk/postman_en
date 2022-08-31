@@ -164,14 +164,14 @@
 							"",
 							"// Type of the e-Tax invoice",
 							"// └ Valid Value : SELL / BUY",
-							"// ",
+							"// └ SELL : Sales invoices, BUY : Purchase invoices",
 							"var TIType = 'BUY';",
 							"pm.collectionVariables.set(\"RequestJob_TIType\", TIType);",
 							"",
 							"// Date type in search criteria",
 							"// └ Valid Value : W / I / S",
 							"// └ W = Date of registration, I = of issuance, S = of filing to NTS(Recommended)",
-							"var DType = 'I';",
+							"var DType = 'S';",
 							"pm.collectionVariables.set(\"RequestJob_DType\", DType);",
 							"",
 							"// Initial date of search scope (Format : yyyyMMdd)",
@@ -534,7 +534,7 @@
 						}
 					]
 				},
-				"description": "ㆍSearch e-Tax invoices corresponded to the search criteria.\nㆍDefault of optional fields is to 'search all'.\n\nhttps://docs.popbill.com/en/httaxinvoice/java/api#Search"
+				"description": "ㆍSearch e-Tax invoices corresponded to the search criteria.\n\nㆍDefault of optional fields is to 'search all'.\n\nhttps://docs.popbill.com/en/httaxinvoice/java/api#Search"
 			},
 			"response": []
 		},
@@ -1029,7 +1029,7 @@
 	],
 	"variable": [
 		{
-			"id": "3bd6be0a-9f54-4cb6-8906-d123478dc7d8",
+			"id": "f4ab7439-7f00-4b7a-9e0e-8eb6b277fd41",
 			"key": "API_Session_Token",
 			"value": ""
 		}

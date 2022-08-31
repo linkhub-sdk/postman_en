@@ -1,0 +1,1038 @@
+{
+	"info": {
+		"_postman_id": "6582844b-c606-4116-b873-118a7e91a86f",
+		"name": "Common Popbill NTS Crawling(e-Tax invoice) API",
+		"description": "When you call GetToken Request, the token used for Bearer authentication is stored in the variable of Collection Scope.\n\n\nSo, You must always call GetToken to test the API.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "GetToken",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "5f062f9c-a834-45db-b735-956b7eb4ab2d",
+						"exec": [
+							"/*********************************************************************************",
+							" *",
+							" * GetToken is a sample code that issues a Bearer token to be entered in ",
+							" * the Authentication header when calling the POPBiLL API.",
+							" * ",
+							" * (See the POPBILL API Certificate PDF Manual for more information)",
+							" *",
+							" **********************************************************************************/",
+							"",
+							"// The LinkID and SecretKey are credentials and are changed to the values ​​provided by POPBiLL.",
+							"var LinkID = 'TESTER';  ",
+							"var SecretKey = 'SwWxqU+0TErBXy/9TVjIPEnI0VTUMMSQZtJf3Ed8q3I='; ",
+							"",
+							"/*",
+							" * The following code is that makes up the HMAC Message Digest ",
+							" */",
+							"",
+							"// access_id is the Seller Business Registration Number (10 digits number except hyphen('-'))",
+							"// and the Scope array is a list of service codes that can be used for the issued token. ",
+							"// 111 means POPBiLL NTS Crawling(e-Tax Invoice) API.",
+							"var Access_id = '1234567890'; // Business Registration Number.",
+							"var Scopes = ['member', '111'];",
+							"var TokenRequest = stringify({access_id : Access_id, scope : Scopes});",
+							"var Body = CryptoJS.SHA256(TokenRequest).toString(CryptoJS.enc.Base64);",
+							"",
+							"",
+							"var RequestDT = new Date().toISOString();",
+							"",
+							"var digestTarget =",
+							"      'POST\\n' +",
+							"      Body + '\\n' +",
+							"      RequestDT +'\\n' +",
+							"      '*\\n' +",
+							"      '2.0\\n' +",
+							"      '/POPBILL_TEST/Token';",
+							"",
+							"var HMACDigest = generateSignature(digestTarget, SecretKey);",
+							"var Authorization = 'LINKHUB '+LinkID + ' '+HMACDigest;",
+							"",
+							"// request header for API Server HMAC authentication.",
+							"pm.collectionVariables.set(\"DateTime\", RequestDT);",
+							"pm.collectionVariables.set(\"TokenRequest\", TokenRequest);",
+							"pm.collectionVariables.set(\"Authorization\", Authorization);",
+							"",
+							"",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}",
+							"",
+							"function generateSignature(message, key) {",
+							"    var keyDec = CryptoJS.enc.Base64.parse(key)",
+							"    var enc = CryptoJS.HmacSHA256(message, keyDec).toString(CryptoJS.enc.Base64);",
+							"    return enc;",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "8206fc11-8f14-4037-a1de-6e6517cd60ad",
+						"exec": [
+							"pm.collectionVariables.clear();",
+							"",
+							"if(pm.response.code == 200 ) {",
+							"    pm.collectionVariables.set(\"API_Session_Token\",'Bearer ' +  pm.response.json().session_token);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-lh-date",
+						"value": "{{DateTime}}",
+						"type": "text"
+					},
+					{
+						"key": "x-lh-version",
+						"value": "2.0",
+						"type": "text"
+					},
+					{
+						"key": "Connection",
+						"value": "close",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{Authorization}}",
+						"type": "text"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					},
+					{
+						"key": "x-lh-forwarded",
+						"value": "*",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{TokenRequest}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-auth.linkhub.co.kr/POPBILL_TEST/Token",
+					"protocol": "https",
+					"host": [
+						"ga-auth",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"POPBILL_TEST",
+						"Token"
+					]
+				},
+				"description": "Request Token for POPBiLL API."
+			},
+			"response": []
+		},
+		{
+			"name": "RequestJob",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "544f6cf3-1738-4dd2-9dcb-45dc87f5b141",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Type of the e-Tax invoice",
+							"// └ Valid Value : SELL / BUY",
+							"// ",
+							"var TIType = 'BUY';",
+							"pm.collectionVariables.set(\"RequestJob_TIType\", TIType);",
+							"",
+							"// Date type in search criteria",
+							"// └ Valid Value : W / I / S",
+							"// └ W = Date of registration, I = of issuance, S = of filing to NTS(Recommended)",
+							"var DType = 'I';",
+							"pm.collectionVariables.set(\"RequestJob_DType\", DType);",
+							"",
+							"// Initial date of search scope (Format : yyyyMMdd)",
+							"var SDate = '20220801';",
+							"pm.collectionVariables.set(\"RequestJob_SDate\", SDate);",
+							"",
+							"// Last date of search scope (Format : yyyyMMdd)",
+							"var EDate = '20220831';",
+							"pm.collectionVariables.set(\"RequestJob_EDate\", EDate);",
+							"",
+							"// Popbill Member User ID.",
+							"var Popbill_UserID = ''; ",
+							"pm.collectionVariables.set(\"API_Popbill_UserID\",Popbill_UserID);",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{API_Session_Token}}",
+						"type": "text"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					},
+					{
+						"key": "x-pb-userid",
+						"value": "{{API_Popbill_UserID}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/HomeTax/Taxinvoice/{{RequestJob_TIType}}?DType={{RequestJob_DType}}&SDate={{RequestJob_SDate}}&EDate={{RequestJob_EDate}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"HomeTax",
+						"Taxinvoice",
+						"{{RequestJob_TIType}}"
+					],
+					"query": [
+						{
+							"key": "DType",
+							"value": "{{RequestJob_DType}}"
+						},
+						{
+							"key": "SDate",
+							"value": "{{RequestJob_SDate}}"
+						},
+						{
+							"key": "EDate",
+							"value": "{{RequestJob_EDate}}"
+						}
+					]
+				},
+				"description": "ㆍRequest a crawling the data of sales/purchase invoices from NTS. (Maximum period for search: 3 months)\n\n\n\nhttps://docs.popbill.com/en/httaxinvoice/java/api#RequestJob"
+			},
+			"response": []
+		},
+		{
+			"name": "GetJobState",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "ab01e3f8-c1ed-4a74-8749-5137cd291428",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "4c49ab5a-3c75-4869-91d4-1442b07745ec",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// JobID returned by RequestJob API",
+							"var JobID = '022083111000000001';",
+							"pm.collectionVariables.set(\"GetJobState_JobID\", JobID);",
+							"",
+							"// Popbill Member User ID.",
+							"var Popbill_UserID = ''; ",
+							"pm.collectionVariables.set(\"API_Popbill_UserID\",Popbill_UserID);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{API_Session_Token}}",
+						"type": "text"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					},
+					{
+						"key": "x-pb-userid",
+						"value": "{{API_Popbill_UserID}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/HomeTax/Taxinvoice/{{GetJobState_JobID}}/State",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"HomeTax",
+						"Taxinvoice",
+						"{{GetJobState_JobID}}",
+						"State"
+					]
+				},
+				"description": "ㆍCheck the status of single crawling job using JobID returned by calling [RequestJob API]\n\nㆍOnce it’s confirmed as ‘jobState = 3(Completed)’ and ‘errorCode = 1(Succeeded)’, user can check the crawled data by calling [Search API] or [Summary API]\n\nhttps://docs.popbill.com/en/httaxinvoice/java/api#GetJobState"
+			},
+			"response": []
+		},
+		{
+			"name": "ListActiveJob",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "1cdd77ab-3b5d-4d7e-ac2b-1e15700dae2f",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Popbill Member User ID.",
+							"var Popbill_UserID = 'linkhub'; ",
+							"pm.collectionVariables.set(\"API_Popbill_UserID\",Popbill_UserID);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{API_Session_Token}}",
+						"type": "text"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					},
+					{
+						"key": "x-pb-userid",
+						"value": "{{API_Popbill_UserID}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/HomeTax/Taxinvoice/JobList",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"HomeTax",
+						"Taxinvoice",
+						"JobList"
+					]
+				},
+				"description": "ㆍCheck the status list of multiple crawling jobs using JobID returned by calling [RequestJob API]\n\nㆍIt’s not available to check the job have been elapsed over an hour since the time of request.\n\nhttps://docs.popbill.com/en/httaxinvoice/java/api#ListActiveJob"
+			},
+			"response": []
+		},
+		{
+			"name": "Search",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "c03805ad-e3e8-462d-9052-166547eed212",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Popbill Member User ID.",
+							"var Popbill_UserID = 'linkhub'; ",
+							"pm.collectionVariables.set(\"API_Popbill_UserID\",Popbill_UserID);",
+							"",
+							"//JobID returned by [RequestJob API]",
+							"var JobID = '';",
+							"pm.collectionVariables.set(\"Search_JobID\",JobID);",
+							"",
+							"// [Array] Type of e-Tax invoice",
+							"// └ Valid Value : N / M (multiple choice is possible)",
+							"// └ N = General, M = Revised e-Tax invoice",
+							"var Type = ['N','M'];",
+							"pm.collectionVariables.set(\"Search_Type\", Type.join(','));",
+							"",
+							"// [Array] Taxation Type",
+							"// └ Valid Value : T / N / Z (multiple choice is possible)",
+							"// └ T = Taxable, N = Exempted, Z = Zero-rate",
+							"var TaxType = ['T','N','Z'];",
+							"pm.collectionVariables.set(\"Search_TaxType\", TaxType.join(','));",
+							"",
+							"// [Array] Purpose Type",
+							"// └ Valid Value : R / C / N (multiple choice is available)",
+							"// └ R = Amount paid, C = Amount due, N = None",
+							"var PurposeType = ['R','C','N'];",
+							"pm.collectionVariables.set(\"Search_PurposeType\", PurposeType.join(','));",
+							"",
+							"// Whether the business registration number of minor place is enrolled or not",
+							"// └ Valid Value : '' / 0 / 1",
+							"// └  '' = all, 0 = None, 1 = Enrolled",
+							"var TaxRegIDYN = '';",
+							"pm.collectionVariables.set(\"Search_TaxRegIDYN\", TaxRegIDYN);",
+							"",
+							"// Type of the Business Registration Number of minor place",
+							"// └ Valid Value : S (Seller)",
+							"var TaxRegIDType = ['S'];",
+							"pm.collectionVariables.set(\"Search_TaxRegIDType\", TaxRegIDType.join(','));",
+							"",
+							"// Business Registration Number of minor place",
+							"// └ one more numbers must be separated by comma(',') (e.g. 1234, 1110)",
+							"var TaxRegID = [''];",
+							"pm.collectionVariables.set(\"Search_TaxRegID\", TaxRegID.join(','));",
+							"",
+							"// Page number",
+							"// └ Default = 1",
+							"var Page = 1;",
+							"pm.collectionVariables.set(\"Search_Page\", Page);",
+							"",
+							"// The number of list to be displayed per page (Maximum : 1,000)",
+							"// └ Default = 500",
+							"var PerPage = 20;",
+							"pm.collectionVariables.set(\"Search_PerPage\", PerPage);",
+							"",
+							"// Sort direction (related to {@no.3 DType})",
+							"// └ Valid Value : D / A",
+							"// └ D = Descending(Default), A = Ascending",
+							"var Order = 'D';",
+							"pm.collectionVariables.set(\"Search_Order\", Order);",
+							"",
+							"",
+							"// Name of Buyer Company / Business Registration Number (for company) / Residential Registration Number (for entrepreneur) / 9999999999999 (for foreigner)",
+							"// └ Do not enter hyphen('-')",
+							"var SearchString = '';",
+							"pm.collectionVariables.set(\"Search_SearchString\", SearchString);",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "{{API_Popbill_UserID}}"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/HomeTax/Taxinvoice/{{Search_JobID}}?Type={{Search_Type}}&TaxType={{Search_TaxType}}&PurposeType={{Search_PurposeType}}&TaxRegIDYN={{Search_TaxRegIDYN}}&TaxRegIDType={{Search_TaxRegIDType}}&TaxRegID={{Search_TaxRegID}}&SearchString={{Search_SearchString}}&Page={{Search_Page}}&PerPage={{Search_PerPage}}&Order={{Search_Order}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"HomeTax",
+						"Taxinvoice",
+						"{{Search_JobID}}"
+					],
+					"query": [
+						{
+							"key": "Type",
+							"value": "{{Search_Type}}"
+						},
+						{
+							"key": "TaxType",
+							"value": "{{Search_TaxType}}"
+						},
+						{
+							"key": "PurposeType",
+							"value": "{{Search_PurposeType}}"
+						},
+						{
+							"key": "TaxRegIDYN",
+							"value": "{{Search_TaxRegIDYN}}"
+						},
+						{
+							"key": "TaxRegIDType",
+							"value": "{{Search_TaxRegIDType}}"
+						},
+						{
+							"key": "TaxRegID",
+							"value": "{{Search_TaxRegID}}"
+						},
+						{
+							"key": "SearchString",
+							"value": "{{Search_SearchString}}"
+						},
+						{
+							"key": "Page",
+							"value": "{{Search_Page}}"
+						},
+						{
+							"key": "PerPage",
+							"value": "{{Search_PerPage}}"
+						},
+						{
+							"key": "Order",
+							"value": "{{Search_Order}}"
+						}
+					]
+				},
+				"description": "ㆍSearch e-Tax invoices corresponded to the search criteria.\nㆍDefault of optional fields is to 'search all'.\n\nhttps://docs.popbill.com/en/httaxinvoice/java/api#Search"
+			},
+			"response": []
+		},
+		{
+			"name": "Summary",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "0ad6639f-51c7-415b-bbf4-a69a6a277841",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Popbill Member User ID.",
+							"var Popbill_UserID = ''; ",
+							"pm.collectionVariables.set(\"API_Popbill_UserID\",Popbill_UserID);",
+							"",
+							"//JobID returned by [RequestJob API]",
+							"var JobID = '';",
+							"pm.collectionVariables.set(\"Summary_JobID\",JobID);",
+							"",
+							"// [Array] Type of e-Tax invoice",
+							"// └ Valid Value : N / M (multiple choice is possible)",
+							"// └ N = General, M = Revised e-Tax invoice",
+							"var Type = ['N','M'];",
+							"pm.collectionVariables.set(\"Summary_Type\", Type.join(','));",
+							"",
+							"// [Array] Taxation Type",
+							"// └ Valid Value : T / N / Z (multiple choice is possible)",
+							"// └ T = Taxable, N = Exempted, Z = Zero-rate",
+							"var TaxType = ['T','N','Z'];",
+							"pm.collectionVariables.set(\"Summary_TaxType\", TaxType.join(','));",
+							"",
+							"// [Array] Purpose Type",
+							"// └ Valid Value : R / C / N (multiple choice is available)",
+							"// └ R = Amount paid, C = Amount due, N = None",
+							"var PurposeType = ['R','C','N'];",
+							"pm.collectionVariables.set(\"Summary_PurposeType\", PurposeType.join(','));",
+							"",
+							"// Whether the business registration number of minor place is enrolled or not",
+							"// └ Valid Value : '' / 0 / 1",
+							"// └  '' = all, 0 = None, 1 = Enrolled",
+							"var TaxRegIDYN = '';",
+							"pm.collectionVariables.set(\"Summary_TaxRegIDYN\", TaxRegIDYN);",
+							"",
+							"// Type of the Business Registration Number of minor place",
+							"// └ Valid Value : S (Seller)",
+							"var TaxRegIDType = ['S'];",
+							"pm.collectionVariables.set(\"Summary_TaxRegIDType\", TaxRegIDType.join(','));",
+							"",
+							"// Business Registration Number of minor place",
+							"// └ one more numbers must be separated by comma(',') (e.g. 1234, 1110)",
+							"var TaxRegID = [''];",
+							"pm.collectionVariables.set(\"Summary_TaxRegID\", TaxRegID.join(','));",
+							"",
+							"// Page number",
+							"// └ Default = 1",
+							"var Page = 1;",
+							"pm.collectionVariables.set(\"Summary_Page\", Page);",
+							"",
+							"// The number of list to be displayed per page (Maximum : 1,000)",
+							"// └ Default = 500",
+							"var PerPage = 20;",
+							"pm.collectionVariables.set(\"Summary_PerPage\", PerPage);",
+							"",
+							"// Sort direction (related to {@no.3 DType})",
+							"// └ Valid Value : D / A",
+							"// └ D = Descending(Default), A = Ascending",
+							"var Order = 'D';",
+							"pm.collectionVariables.set(\"Summary_Order\", Order);",
+							"",
+							"",
+							"// Name of Buyer Company / Business Registration Number (for company) / Residential Registration Number (for entrepreneur) / 9999999999999 (for foreigner)",
+							"// └ Do not enter hyphen('-')",
+							"var SearchString = '';",
+							"pm.collectionVariables.set(\"Summary_SearchString\", SearchString);",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "{{API_Popbill_UserID}}"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/HomeTax/Taxinvoice/{{Summary_JobID}}/Summary?Type={{Summary_Type}}&TaxType={{Summary_TaxType}}&PurposeType={{Summary_PurposeType}}&TaxRegIDYN={{Summary_TaxRegIDYN}}&TaxRegIDType={{Summary_TaxRegIDType}}&TaxRegID={{Summary_TaxRegID}}&SearchString={{Summary_SearchString}}&Page={{Summary_Page}}&PerPage={{Summary_PerPage}}&Order={{Summary_Order}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"HomeTax",
+						"Taxinvoice",
+						"{{Summary_JobID}}",
+						"Summary"
+					],
+					"query": [
+						{
+							"key": "Type",
+							"value": "{{Summary_Type}}"
+						},
+						{
+							"key": "TaxType",
+							"value": "{{Summary_TaxType}}"
+						},
+						{
+							"key": "PurposeType",
+							"value": "{{Summary_PurposeType}}"
+						},
+						{
+							"key": "TaxRegIDYN",
+							"value": "{{Summary_TaxRegIDYN}}"
+						},
+						{
+							"key": "TaxRegIDType",
+							"value": "{{Summary_TaxRegIDType}}"
+						},
+						{
+							"key": "TaxRegID",
+							"value": "{{Summary_TaxRegID}}"
+						},
+						{
+							"key": "SearchString",
+							"value": "{{Summary_SearchString}}"
+						},
+						{
+							"key": "Page",
+							"value": "{{Summary_Page}}"
+						},
+						{
+							"key": "PerPage",
+							"value": "{{Summary_PerPage}}"
+						},
+						{
+							"key": "Order",
+							"value": "{{Summary_Order}}"
+						}
+					]
+				},
+				"description": "ㆍCheck the summarized information of crawled data.\n\nㆍDefault of optional fields is to 'search all’.\n\nhttps://docs.popbill.com/en/httaxinvoice/java/api#Summary"
+			},
+			"response": []
+		},
+		{
+			"name": "GetTaxinvoice",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "9f779b5e-24e8-4987-90aa-bcda4164bca5",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Popbill Member User ID.",
+							"var Popbill_UserID = ''; ",
+							"pm.collectionVariables.set(\"API_Popbill_UserID\",Popbill_UserID);",
+							"",
+							"//NTS Confirm Number returned by [Search API]",
+							"var NTSConfirmNum = '';",
+							"pm.collectionVariables.set(\"GetTaxinvoice_NTSConfirmNum\",NTSConfirmNum);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{API_Session_Token}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pb-userid",
+						"value": "{{API_Popbill_UserID}}",
+						"type": "text"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/HomeTax/Taxinvoice/{{GetTaxinvoice_NTSConfirmNum}}",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"HomeTax",
+						"Taxinvoice",
+						"{{GetTaxinvoice_NTSConfirmNum}}"
+					]
+				},
+				"description": "ㆍCheck the detailed information of single e-Tax invoice using NTS confirm number.\n\nhttps://docs.popbill.com/en/httaxinvoice/java/api#GetTaxinvoice"
+			},
+			"response": []
+		},
+		{
+			"name": "GetXML",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "da441def-1514-4923-a1c2-89b1ed04ebeb",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Popbill Member User ID.",
+							"var Popbill_UserID = ''; ",
+							"pm.collectionVariables.set(\"API_Popbill_UserID\",Popbill_UserID);",
+							"",
+							"//NTS Confirm Number returned by [Search API]",
+							"var NTSConfirmNum = '';",
+							"pm.collectionVariables.set(\"GetXML_NTSConfirmNum\",NTSConfirmNum);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "{{API_Popbill_UserID}}"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/HomeTax/Taxinvoice/{{GetXML_NTSConfirmNum}}?T=xml",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"HomeTax",
+						"Taxinvoice",
+						"{{GetXML_NTSConfirmNum}}"
+					],
+					"query": [
+						{
+							"key": "T",
+							"value": "xml"
+						}
+					]
+				},
+				"description": "ㆍCheck the detailed information of single e-Tax invoice using NTS confirm number.\n\nㆍThe result is returned as a XML-formatted string.\n\nhttps://docs.popbill.com/en/httaxinvoice/java/api#GetXML"
+			},
+			"response": []
+		},
+		{
+			"name": "GetPopUpURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "af3d2e95-4cb2-4e0b-87c0-75d0ed52c51d",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Popbill Member User ID.",
+							"var Popbill_UserID = ''; ",
+							"pm.collectionVariables.set(\"API_Popbill_UserID\",Popbill_UserID);",
+							"",
+							"//NTS Confirm Number returned by [Search API]",
+							"var NTSConfirmNum = '';",
+							"pm.collectionVariables.set(\"GetPopUpURL_NTSConfirmNum\",NTSConfirmNum);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "{{API_Popbill_UserID}}"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/HomeTax/Taxinvoice/{{GetPopUpURL_NTSConfirmNum}}/PopUp",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"HomeTax",
+						"Taxinvoice",
+						"{{GetPopUpURL_NTSConfirmNum}}",
+						"PopUp"
+					]
+				},
+				"description": "ㆍGet the popup URL to view a single e-Tax invoice crawled.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\n\nhttps://docs.popbill.com/en/httaxinvoice/java/api#GetPopUpURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetPrintURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "c6346b8f-f6b6-47e7-89c0-5ca3ddc464a4",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Popbill Member User ID.",
+							"var Popbill_UserID = ''; ",
+							"pm.collectionVariables.set(\"API_Popbill_UserID\",Popbill_UserID);",
+							"",
+							"//NTS Confirm Number returned by [Search API]",
+							"var NTSConfirmNum = '';",
+							"pm.collectionVariables.set(\"GetPrintURL_NTSConfirmNum\",NTSConfirmNum);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "{{API_Popbill_UserID}}"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/HomeTax/Taxinvoice/{{GetPrintURL_NTSConfirmNum}}/Print",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"HomeTax",
+						"Taxinvoice",
+						"{{GetPrintURL_NTSConfirmNum}}",
+						"Print"
+					]
+				},
+				"description": "ㆍGet the popup URL to print a single e-Tax invoice crawled.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/httaxinvoice/java/api#GetPrintURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetCertificatePopUpURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "28a6d93c-19a0-4835-8ea5-056b74d821e5",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Popbill Member User ID.",
+							"var Popbill_UserID = ''; ",
+							"pm.collectionVariables.set(\"API_Popbill_UserID\",Popbill_UserID);",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "{{API_Popbill_UserID}}"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://ga-popbill-test.linkhub.co.kr/HomeTax/Taxinvoice?TG=CERT",
+					"protocol": "https",
+					"host": [
+						"ga-popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"HomeTax",
+						"Taxinvoice"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "CERT"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to access the management page of HomeTax Authentication.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/httaxinvoice/java/api#GetCertificatePopUpURL"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"id": "3bd6be0a-9f54-4cb6-8906-d123478dc7d8",
+			"key": "API_Session_Token",
+			"value": ""
+		}
+	],
+	"protocolProfileBehavior": {}
+}

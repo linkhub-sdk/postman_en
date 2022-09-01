@@ -267,7 +267,7 @@
 							" */",
 							"",
 							"// JobID returned by RequestJob API",
-							"var JobID = '022083111000000001';",
+							"var JobID = '022090116000000002';",
 							"pm.collectionVariables.set(\"GetJobState_JobID\", JobID);",
 							"",
 							"// Popbill Member User ID.",
@@ -331,7 +331,7 @@
 							" */",
 							"",
 							"// Popbill Member User ID.",
-							"var Popbill_UserID = 'linkhub'; ",
+							"var Popbill_UserID = ''; ",
 							"pm.collectionVariables.set(\"API_Popbill_UserID\",Popbill_UserID);"
 						],
 						"type": "text/javascript"
@@ -390,11 +390,11 @@
 							" */",
 							"",
 							"// Popbill Member User ID.",
-							"var Popbill_UserID = 'linkhub'; ",
+							"var Popbill_UserID = ''; ",
 							"pm.collectionVariables.set(\"API_Popbill_UserID\",Popbill_UserID);",
 							"",
 							"//JobID returned by [RequestJob API]",
-							"var JobID = '';",
+							"var JobID = '022090116000000002';",
 							"pm.collectionVariables.set(\"Search_JobID\",JobID);",
 							"",
 							"// [Array] Type of e-Tax invoice",
@@ -556,7 +556,7 @@
 							"pm.collectionVariables.set(\"API_Popbill_UserID\",Popbill_UserID);",
 							"",
 							"//JobID returned by [RequestJob API]",
-							"var JobID = '';",
+							"var JobID = '022090116000000002';",
 							"pm.collectionVariables.set(\"Summary_JobID\",JobID);",
 							"",
 							"// [Array] Type of e-Tax invoice",
@@ -1029,8 +1029,158 @@
 	],
 	"variable": [
 		{
-			"id": "f4ab7439-7f00-4b7a-9e0e-8eb6b277fd41",
+			"id": "90ead2be-100d-41b0-bc90-06b0ab17f6b9",
 			"key": "API_Session_Token",
+			"value": ""
+		},
+		{
+			"id": "95c00905-aa54-43ae-af98-39a5cf1b10b3",
+			"key": "API_Popbill_UserID",
+			"value": ""
+		},
+		{
+			"id": "48c49110-8438-40fd-a7d2-34cf3ffaa41a",
+			"key": "RequestJob_DType",
+			"value": ""
+		},
+		{
+			"id": "a10c86dd-5543-4ad8-886c-485a1de154a1",
+			"key": "RequestJob_EDate",
+			"value": ""
+		},
+		{
+			"id": "9e117df9-8c3f-46d0-8000-47c97e41e43e",
+			"key": "RequestJob_SDate",
+			"value": ""
+		},
+		{
+			"id": "ab5c18cf-361a-4fe0-9bcc-18a74027cefd",
+			"key": "RequestJob_TIType",
+			"value": ""
+		},
+		{
+			"id": "95baa948-c23f-40af-b88c-a320a01c7c88",
+			"key": "GetJobState_JobID",
+			"value": ""
+		},
+		{
+			"id": "f72f1b68-0b33-41ff-8292-7bec5c79c770",
+			"key": "Search_JobID",
+			"value": ""
+		},
+		{
+			"id": "1ce717a8-46cc-4cf9-95cf-66a8d15d5c40",
+			"key": "Search_Order",
+			"value": ""
+		},
+		{
+			"id": "bb32e9b6-8d82-498a-a9c0-798f4b13e3eb",
+			"key": "Search_Page",
+			"value": ""
+		},
+		{
+			"id": "be88eb6e-e281-4a9a-8fc2-f1028b46f917",
+			"key": "Search_PerPage",
+			"value": ""
+		},
+		{
+			"id": "ebde7768-8f7a-45b9-b20d-99da668f40fd",
+			"key": "Search_PurposeType",
+			"value": ""
+		},
+		{
+			"id": "c3c1423c-b559-4cec-a624-78776deb412c",
+			"key": "Search_SearchString",
+			"value": ""
+		},
+		{
+			"id": "86941215-7ee5-426c-aa39-348c078b644d",
+			"key": "Search_TaxRegID",
+			"value": ""
+		},
+		{
+			"id": "2829cd16-d71e-4439-b1d0-813a8531dba1",
+			"key": "Search_TaxRegIDType",
+			"value": ""
+		},
+		{
+			"id": "64761e79-9813-4842-936d-1cf16fb26fbc",
+			"key": "Search_TaxRegIDYN",
+			"value": ""
+		},
+		{
+			"id": "ced48723-171a-46be-9716-76d8e07fa651",
+			"key": "Search_TaxType",
+			"value": ""
+		},
+		{
+			"id": "6a579a15-4421-4c40-9d88-9e30ab245c95",
+			"key": "Search_Type",
+			"value": ""
+		},
+		{
+			"id": "3299b9a7-1e06-41c9-abf3-a95ec99b2857",
+			"key": "Summary_JobID",
+			"value": ""
+		},
+		{
+			"id": "9f74a56e-e8f0-4adf-9f19-a1ebb559ba7a",
+			"key": "Summary_Order",
+			"value": ""
+		},
+		{
+			"id": "ddea532a-4a55-4086-9526-2b4111f41e55",
+			"key": "Summary_Page",
+			"value": ""
+		},
+		{
+			"id": "565b90a7-5cb4-4d43-a467-4629a71fe25d",
+			"key": "Summary_PerPage",
+			"value": ""
+		},
+		{
+			"id": "e77a0fd0-fba7-4a2e-9b0b-54059c804270",
+			"key": "Summary_PurposeType",
+			"value": ""
+		},
+		{
+			"id": "9c759cf6-1df1-45af-b8dd-c206db5b110a",
+			"key": "Summary_SearchString",
+			"value": ""
+		},
+		{
+			"id": "241180c2-3e0d-4f03-8f49-b50e92d68daf",
+			"key": "Summary_TaxRegID",
+			"value": ""
+		},
+		{
+			"id": "4080324c-c0c5-46dc-b119-5501368fe9d9",
+			"key": "Summary_TaxRegIDType",
+			"value": ""
+		},
+		{
+			"id": "bd55984c-26ac-4f94-9821-a5093a24cb30",
+			"key": "Summary_TaxRegIDYN",
+			"value": ""
+		},
+		{
+			"id": "8e68a2ca-40fd-4aaa-aae0-1a5df3042bd3",
+			"key": "Summary_TaxType",
+			"value": ""
+		},
+		{
+			"id": "8442212d-6477-4ff9-8770-95c47b28f9d5",
+			"key": "Summary_Type",
+			"value": ""
+		},
+		{
+			"id": "d2e7e34a-09ae-4cff-8ee1-31ac8a74dd1e",
+			"key": "GetTaxinvoice_NTSConfirmNum",
+			"value": ""
+		},
+		{
+			"id": "80e10e87-a939-4134-9532-e33f5bb76346",
+			"key": "GetXML_NTSConfirmNum",
 			"value": ""
 		}
 	],

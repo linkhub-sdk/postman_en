@@ -1,0 +1,2006 @@
+{
+	"info": {
+		"_postman_id": "b8c648c7-e8f0-4b92-8b82-199f4e69a4c3",
+		"name": "Common POpbill Cashbill API",
+		"description": "When you call GetToken Request, the token used for Bearer authentication is stored in the variable of Collection Scope.\r\n\r\n\r\nSo, You must always call GetToken to test the API.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "GetToken",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "07ad2cbd-3cbb-49c0-a2cd-df05712dd704",
+						"exec": [
+							"/*********************************************************************************",
+							" *",
+							" * GetToken is a sample code that issues a Bearer token to be entered in ",
+							" * the Authentication header when calling the POPBiLL API.",
+							" * ",
+							" * (See the POPBILL API Certificate PDF Manual for more information)",
+							" *",
+							" **********************************************************************************/",
+							"",
+							"// The LinkID and SecretKey are credentials and are changed to the values ​​provided by POPBiLL.",
+							"var LinkID = 'TESTER';  // ex. 'LINKHUB'",
+							"var SecretKey = 'SwWxqU+0TErBXy/9TVjIPEnI0VTUMMSQZtJf3Ed8q3I='; //ex. 'CAuU7dpL4viqfoT6G+HJjqWzHhg3hRDD5sKIkp7Yqwc='",
+							"",
+							"/*",
+							" * The following code is that makes up the HMAC Message Digest ",
+							" */",
+							"",
+							"// access_id is the Seller Business Registration Number (10 digits number except hyphen('-'))",
+							"// and the Scope array is a list of service codes that can be used for the issued token. ",
+							"// (140 means POPBiLL e-Cashbill API.)",
+							"var Access_id = '1234567890'; // Business Registration Number.",
+							"var Scopes = ['member', '140'];",
+							"var TokenRequest = stringify({access_id : Access_id, scope : Scopes});",
+							"var Body = CryptoJS.SHA256(TokenRequest).toString(CryptoJS.enc.Base64);",
+							"",
+							"var RequestDT = new Date().toISOString();",
+							"",
+							"var digestTarget =",
+							"      'POST\\n' +",
+							"      Body + '\\n' +",
+							"      RequestDT +'\\n' +",
+							"      '*\\n' +",
+							"      '2.0\\n' +",
+							"      '/POPBILL_TEST/Token';",
+							"",
+							"var HMACDigest = generateSignature(digestTarget, SecretKey);",
+							"var Authorization = 'LINKHUB '+LinkID + ' '+HMACDigest;",
+							"",
+							"// request header for API Server HMAC authentication.",
+							"pm.collectionVariables.set(\"DateTime\", RequestDT);",
+							"pm.collectionVariables.set(\"TokenRequest\", TokenRequest);",
+							"pm.collectionVariables.set(\"Authorization\", Authorization);",
+							"",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}",
+							"",
+							"function generateSignature(message, key) {",
+							"    var keyDec = CryptoJS.enc.Base64.parse(key)",
+							"    var enc = CryptoJS.HmacSHA256(message, keyDec).toString(CryptoJS.enc.Base64);",
+							"    return enc;",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "c595b164-60ad-422b-8d09-94d567cd910c",
+						"exec": [
+							"pm.collectionVariables.clear();",
+							"",
+							"if(pm.response.code == 200 ) {",
+							"    pm.collectionVariables.set(\"API_Session_Token\",'Bearer ' +  pm.response.json().session_token);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-lh-date",
+						"value": "{{DateTime}}",
+						"type": "text"
+					},
+					{
+						"key": "x-lh-version",
+						"value": "2.0",
+						"type": "text"
+					},
+					{
+						"key": "Connection",
+						"value": "close",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{Authorization}}",
+						"type": "text"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US",
+						"type": "text"
+					},
+					{
+						"key": "x-lh-forwarded",
+						"value": "*",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{TokenRequest}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://ga-auth.linkhub.co.kr/POPBILL_TEST/Token",
+					"protocol": "https",
+					"host": [
+						"ga-auth",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"POPBILL_TEST",
+						"Token"
+					]
+				},
+				"description": "Request Token for POPBiLL API."
+			},
+			"response": []
+		},
+		{
+			"name": "CheckMgtKeyInUse",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "7f0adbc7-5a23-4b96-8735-73f0763c4ec6",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Cashbill ID",
+							"var mgtKey = '20221103-01'",
+							"pm.collectionVariables.set(\"CheckMgtKeyinUse_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "Accept-Language",
+						"type": "text",
+						"value": "en-US"
+					}
+				],
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/{{CheckMgtKeyinUse_MgtKey}}",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"{{CheckMgtKeyinUse_MgtKey}}"
+					]
+				},
+				"description": "ㆍCheck whether a cashbill ID is in use or not.\n\nㆍThe cashbill ID is a unique value assigned by user to avoid duplicated issuance and organized e-Cashbill systematically.\n\nhttps://docs.popbill.com/en/cashbill/java/api#CheckMgtKeyInUse"
+			},
+			"response": []
+		},
+		{
+			"name": "RegistIssue",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "60c017dd-f414-42e6-a645-9a3efd2f27ab",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "ISSUE"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "/*\n*\n* Object of e-Cashibill\n*\n* A more detailed explanation can be found from the link below.\n* - https://docs.popbill.com/en/cashbill/java/api#Cashbill\n*\n*/\n\n{\n    // Cashbill ID\n    \"mgtKey\" : \"20221103-001\",\n\n    // The date and time of trading (Format : yyyyMMddHHmmss)\n    // └ Valid Value : Today(Default) / Previous day\n    \"tradeDT\" : \"20221103140812\",\n\n    // Document Type\n    // └ Valid Value : 승인거래 / 취소거래\n    // └ 승인거래 = Approval(General), 취소거래 = Revocation(Cancellation)\n    \"tradeType\" : \"승인거래\",\n\n \t// Issuance Purpose\n \t// └ Valid Value : 소득공제용 / 지출증빙용\n \t// └ 소득공제용 = To deduct income tax, 지출증빙용 = To proof the expenditure in business\n    \"tradeUsage\" : \"소득공제용\",\n\n \t// Trade Type\n \t// └ Valid Value : 일반 / 도서공연 / 대중교통\n \t// └ 일반 = General(Default), 도서공연 = Book and Performance, 대중교통 = Public Transportation\n    \"tradeOpt\" : \"일반\",\n\n    // Taxation Type\n    // └ Valid Value : 과세 / 비과세\n    // └ 과세 = Taxable, 비과세 = Non-taxable\n    \"taxationType\" : \"과세\",\n\n    // Total Amount\n    // └ Sum of {@no.11 supplyCost}, {@no.12 tax} and {@no.13 serviceFee}\n    // └ Only positive(+) number is available\n    \"totalAmount\" : \"11000\",\n\n    // Supply values\n    // └ Only positive(+) number is available\n    \"supplyCost\" : \"10000\",\n\n    // Tax Amount\n    // └ Only positive(+) number is available\n    \"tax\" : \"1000\",\n\n    // Service Fee\n    // └ Only positive(+) number is available\n    \"serviceFee\" : \"0\",\n\n    // [Seller] Business Registration Number of user (10 digits except ‘-’)\n    \"franchiseCorpNum\" : \"1234567890\",\n\n    // [Seller] Identification Number for minor place of business\n    // └ 4 digits number\n    \"franchiseTaxRegID\" : \"\",\n\n    // [Seller] Name of company\n    \"franchiseCorpName\" : \"Name of company\",\n\n    // [Seller] Name of representative\n    \"franchiseCEOName\" : \"Name of representative\",\n\n    // [Seller] Company Address\n    \"franchiseAddr\" : \"Company Address\",\n\n    // [Seller] Contact\n    \"franchiseTEL\" : \"070-1234-1234\",\n\n    // [Customer] Identification Number\n    // └ Case1. {@no.7 tradeUsage} = ‘소득공제용’(To deduct income tax) : Resident Registration Number / Mobile / (e-Cashbill) Card Number / 010-000-1234 (for voluntary issuance)\n    // └ Case2. {@no.7 tradeUsage} = ‘지출증빙용’(To proof the expenditure in business) : Business Registration Number / Resident Registration Number / Mobile / (e-Cashbill) Card Number\n    // └ Do not enter hyphen('-')\n    \"identityNum\" : \"154420201111111111\",\n\n    // [Customer] Name\n    \"customerName\" : \"Name of customer\",\n\n    // Item Name\n    \"itemName\" : \"Item Name\",\n\n    // Order Number\n    \"orderNumber\" : \"Order Number\",\n\n    // [Customer] Email address\n    // └ To send a notification mail\n    \"email\" : \"test@test.com\",\n\n    // [Customer] Mobile\n    // └ When {@no.26 smssendYN} = ‘true’, a message is sent to this value\n    \"hp\" : \"010-111-222\",\n\n    // Whether user send a notification message\n    // └ true = send, false = not send(Default)\n    \"smssendYN\" : false,\n\n    // Title of notification mail sent to customer\n    // └ Default: a title POPBiLL set in advance\n    \"emailSubject\" : \"\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill"
+					]
+				},
+				"description": "ㆍRegister and Issue the e-Cashbill. At the same time of issuance, points(fee) is charged and notification mail is sent to customer.\n\nㆍThe status of cashbill is changed to 'ISSUED' when the result is returned successfully.\n\nhttps://docs.popbill.com/en/cashbill/java/api#RegistIssue"
+			},
+			"response": []
+		},
+		{
+			"name": "BulkSubmit",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "341bebb2-01d9-4642-823f-12e1ee938e78",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Submission ID",
+							"// └ A unique value combined English letter, numeric, hyphen(‘-’) and underbar(‘_’)",
+							"var submitID = '20221103-BULK-CASHBILL';",
+							"pm.collectionVariables.set(\"SubmitID\", submitID);",
+							"",
+							"// [List] Object of e-Cashbill",
+							"var CashbillList = [];",
+							"",
+							"// BulkSubmit API can accept the issuance of 100 e-Cashbill per submission",
+							"// Created 100 e-Cashbill in a loop to help understand the BulkSubmit API.",
+							"for(var i=1; i<=100; i++){",
+							"",
+							"    // Object of e-Cashbill",
+							"    // - https://docs.popbill.com/en/cashbill/java/api#Cashbill",
+							"    var Cashbill = {",
+							"",
+							"        // Cashbill ID",
+							"        \"mgtKey\" : \"20221103-\"+i,",
+							"",
+							"        // The date and time of trading (Format : yyyyMMddHHmmss)",
+							"        // └ Valid Value : Today(Default) / Previous day",
+							"        \"tradeDT\" : \"\",",
+							"",
+							"        // Document Type",
+							"        // └ Valid Value : 승인거래 / 취소거래",
+							"        // └ 승인거래 = Approval(General), 취소거래 = Revocation(Cancellation)",
+							"        \"tradeType\" : \"승인거래\",",
+							"",
+							"        // Issuance Purpose",
+							"        // └ Valid Value : 소득공제용 / 지출증빙용",
+							"        // └ 소득공제용 = To deduct income tax, 지출증빙용 = To proof the expenditure in business",
+							"        \"tradeUsage\" : \"소득공제용\",",
+							"",
+							"        // Trade Type",
+							"        // └ Valid Value : 일반 / 도서공연 / 대중교통",
+							"        // └ 일반 = General(Default), 도서공연 = Book and Performance, 대중교통 = Public Transportation",
+							"        \"tradeOpt\" : \"일반\",",
+							"",
+							"        // Taxation Type",
+							"        // └ Valid Value : 과세 / 비과세",
+							"        // └ 과세 = Taxable, 비과세 = Non-taxable",
+							"        \"taxationType\" : \"과세\",",
+							"",
+							"        // Total Amount",
+							"        // └ Sum of {@no.11 supplyCost}, {@no.12 tax} and {@no.13 serviceFee}",
+							"        // └ Only positive(+) number is available",
+							"        \"totalAmount\" : \"11000\",",
+							"",
+							"        // Supply values",
+							"        // └ Only positive(+) number is available",
+							"        \"supplyCost\" : \"10000\",",
+							"",
+							"        // Tax Amount",
+							"        // └ Only positive(+) number is available",
+							"        \"tax\" : \"1000\",",
+							"",
+							"        // Service Fee",
+							"        // └ Only positive(+) number is available",
+							"        \"serviceFee\" : \"0\",",
+							"",
+							"        // [Seller] Business Registration Number of user (10 digits except ‘-’)",
+							"        \"franchiseCorpNum\" : \"1234567890\",",
+							"",
+							"        // [Seller] Identification Number for minor place of business",
+							"        // └ 4 digits number",
+							"        \"franchiseTaxRegID\" : \"\",",
+							"",
+							"        // [Seller] Name of company",
+							"        \"franchiseCorpName\" : \"Name of company\",",
+							"",
+							"        // [Seller] Name of representative",
+							"        \"franchiseCEOName\" : \"Name of representative\",",
+							"",
+							"        // [Seller] Company Address",
+							"        \"franchiseAddr\" : \"Company Address\",",
+							"",
+							"        // [Seller] Contact",
+							"        \"franchiseTEL\" : \"070-1234-1234\",",
+							"",
+							"        // [Customer] Identification Number",
+							"        // └ Case1. {@no.7 tradeUsage} = ‘소득공제용’(To deduct income tax) : Resident Registration Number / Mobile / (e-Cashbill) Card Number / 010-000-1234 (for voluntary issuance)",
+							"        // └ Case2. {@no.7 tradeUsage} = ‘지출증빙용’(To proof the expenditure in business) : Business Registration Number / Resident Registration Number / Mobile / (e-Cashbill) Card Number",
+							"        // └ Do not enter hyphen('-')",
+							"        \"identityNum\" : \"154420201111111111\",",
+							"",
+							"        // [Customer] Name",
+							"        \"customerName\" : \"Name of customer\",",
+							"",
+							"        // Item Name",
+							"        \"itemName\" : \"Item Name\",",
+							"",
+							"        // Order Number",
+							"        \"orderNumber\" : \"Order Number\",",
+							"",
+							"        // [Customer] Email address",
+							"        // └ To send a notification mail",
+							"        \"email\" : \"test@test.com\",",
+							"",
+							"        // [Customer] Mobile",
+							"        // └ When {@no.26 smssendYN} = ‘true’, a message is sent to this value",
+							"        \"hp\" : \"010-111-222\",",
+							"",
+							"        // Whether user send a notification message",
+							"        // └ true = send, false = not send(Default)",
+							"        \"smssendYN\" : false",
+							"    }",
+							"",
+							"    CashbillList.push(Cashbill);",
+							"}",
+							"",
+							"// BulkSubmit API - POST Request Body object",
+							"var RequestBody = {",
+							"",
+							"    // [List] Object of e-Cashbill",
+							"    cashbills : CashbillList",
+							"};",
+							"",
+							"",
+							"function stringify(obj) {",
+							"    return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}",
+							"",
+							"function getSHA1Base64(input){",
+							"    return CryptoJS.SHA1(input).toString(CryptoJS.enc.Base64);",
+							"}",
+							"",
+							"pm.collectionVariables.set(\"BulkRequestBody\", stringify(RequestBody));",
+							"",
+							"// Generate a Message digest for Request Body message validation",
+							"// - base64encode(sha1(requestBody))",
+							"var MessageDigest = getSHA1Base64(stringify(RequestBody));",
+							"pm.collectionVariables.set(\"BulkMessageDigest\", MessageDigest);",
+							"",
+							"",
+							"",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "BULKISSUE"
+					},
+					{
+						"key": "x-pb-submit-id",
+						"type": "text",
+						"value": "{{SubmitID}}"
+					},
+					{
+						"key": "x-pb-message-digest",
+						"type": "text",
+						"value": "{{BulkMessageDigest}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{BulkRequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill"
+					]
+				},
+				"description": "ㆍSubmit the issuance of bulk cashbills. A single transaction processes maximum 100 cashbills.\n\nㆍDuplicated submission ID and e-Cashbill data are not accepted and it’s handled by returning registered submission ID, not the error code and message.\n\nhttps://docs.popbill.com/en/cashbill/java/api#BulkSubmit"
+			},
+			"response": []
+		},
+		{
+			"name": "GetBulkResult",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "cd0fba96-1f5e-4fd0-ac2a-a7450c16ae2d",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Assigned submitID for the bulk submit",
+							"var submitID = '20221103-BULK-CASHBILL';",
+							"pm.collectionVariables.set(\"GetBulkResult_submitID\", submitID);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/BULK/{{GetBulkResult_submitID}}/State",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"BULK",
+						"{{GetBulkResult_submitID}}",
+						"State"
+					]
+				},
+				"description": "ㆍCheck the submission status for bulk issuance using SubmitID.\n\nㆍThe issuance result is returned when the submission status(variable: txState) is changed to ‘2’(successfully completed).\n\nhttps://docs.popbill.com/en/cashbill/java/api#GetBulkResult"
+			},
+			"response": []
+		},
+		{
+			"name": "Delete",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "7ee6a99d-2afa-4593-9da0-c51d960cf2d8",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Cashbill ID",
+							"var mgtKey = 'mgtKey';",
+							"pm.collectionVariables.set(\"Delete_mgtKey\", mgtKey);",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "DELETE"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/{{Delete_mgtKey}}",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"{{Delete_mgtKey}}"
+					]
+				},
+				"description": "ㆍDelete an e-Cashbill in status of ‘FAILED’ to reuse the cashbill ID of failed cashbill.\n\nhttps://docs.popbill.com/en/cashbill/java/api#Delete"
+			},
+			"response": []
+		},
+		{
+			"name": "RevokeRegistIssue",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "fae4de64-0f3c-402b-947b-3ad1883b20a7",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "REVOKEISSUE"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "\n{\n    // Cashbill ID\n    \"mgtKey\" : \"20221103-002\",\n\n    // The date and time of trading (Format : yyyyMMddHHmmss)\n    // └ Valid Value : Today(Default) / Previous day\n    \"tradeDT\" : \"20221102000000\",\n    \n    // NTS Confirm Number of the Original\n    // └ Refer {@no.18 confirmNum} of [A.9. CashbillInfo] returned by [2.1. GetInfo]\n    \"orgConfirmNum\" : \"TB0000118\",\n\n    // Trade Date of the Original\n    // └Refer {@no.3 tradeDate} of [A.9. CashbillInfo] returned by [2.1. GetInfo]\n    \"orgTradeDate\" : \"20221020\",\n\n    // Whether user send a notification message\n    // └ true = send, false = not send(Default)\n    // └ The message is sent to customer contact of the original\n    \"smssendYN\" : false,\n\n    // Memo for user’s convenience\n    // └ invisible to customer\n    \"memo\" : \"메모\",\n\n    // Whether user revoke the whole of the trade or a part\n    // └ true = a part, false = the whole(Default)\n    \"isPartCancel\" : true,\n\n    // Reason for revocation\n    // └ Valid value: 1 / 2 / 3\n    // └ 1 = Return(Default), 2 = Error on filed e-Cashbill, 3 = etc.\n    \"cancelType\" : \"1\",\n\n    // Supply values\n    // └ When {@no.8 isPartCancel} is ‘true’, enter the value as much as to be revoked\n    // └ When {@no.8 isPartCancel} is ‘false’, leave a blank\n    \"supplyCost\" : \"10000\",\n\n    // Tax Amount\n    // └ When {@no.8 isPartCancel} is ‘true’, enter the value as much as to be revoked\n    // └ When {@no.8 isPartCancel} is ‘false’, leave a blank\n    \"tax\" : \"1000\",\n\n    // Service Fee\n    // └ When {@no.8 isPartCancel} is ‘true’, enter the value as much as to be revoked\n    // └ When {@no.8 isPartCancel} is ‘false’, leave a blank\n    \"serviceFee\" : \"0\",\n\n    // Total Amount\n    // └ Sum of {@no.10 supplyCost}, {@no.11 tax} and {@no.12 serviceFee}\n    // └ When {@no.8 isPartCancel} is ‘true’, enter the value as much as to be revoked\n    // └ When {@no.8 isPartCancel} is ‘false’, leave a blank\n    \"totalAmount\" : \"11000\",\n\n\t// Title of notification mail sent to customer\n    // └ Default: a title POPBiLL set in advance\n    \"emailSubject\" : \"\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill"
+					]
+				},
+				"description": "ㆍRegister and Issue an e-Cashbill for revocation with the cost information* as much as to be revoked. (*Supply values, Tax amount, Service fee and Total amount)\n\nㆍThe status of cashbill is changed to 'ISSUED' when the result is returned successfully\n\n※ Issuance for revocation is only available to the status of ‘Succeed’.\n\nhttps://docs.popbill.com/en/cashbill/java/api#RegistIssue"
+			},
+			"response": []
+		},
+		{
+			"name": "GetInfo",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "f7dc1497-f187-4f0a-bf07-6bf6c8a6300f",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"",
+							"// Cashbill ID",
+							"var mgtKey = '20221103-001'",
+							"pm.collectionVariables.set(\"GetInfo_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/{{GetInfo_MgtKey}}",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"{{GetInfo_MgtKey}}"
+					]
+				},
+				"description": "ㆍCheck the status of a single e-Cashbill and summarized information.\n\nㆍCheck variable ‘stateCode’ of returned ‘CashbillInfo’ to confirm the status of e-Cashbill.\n\nhttps://docs.popbill.com/en/cashbill/java/api#GetInfo"
+			},
+			"response": []
+		},
+		{
+			"name": "GetInfos",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "4b757a5a-c33d-40f3-8340-1ca9d27704d5",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// [Array] Cashbill ID",
+							"var InovicerMgtKeyList = ['20221103-001','20221103-002']",
+							"pm.collectionVariables.set(\"GetInfos_InovicerMgtKeyList\", stringify(InovicerMgtKeyList));",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{GetInfos_InovicerMgtKeyList}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/States",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"States"
+					]
+				},
+				"description": "ㆍCheck the status of multiple e-Cashbills and summarized information. (Maximum : 1,000 cashbills)\n\nㆍCheck variable ‘stateCode’ of returned ‘CashbillInfo’ to confirm the status of e-Cashbill.\n\nhttps://docs.popbill.com/en/cashbill/java/api#GetInfos"
+			},
+			"response": []
+		},
+		{
+			"name": "GetDetailInfo",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "af279cb4-5849-4620-bfa3-aa91cf9411de",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Cashbill ID",
+							"var mgtKey = '20221103-001'",
+							"pm.collectionVariables.set(\"GetDetailInfo_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/{{GetDetailInfo_MgtKey}}?Detail",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"{{GetDetailInfo_MgtKey}}"
+					],
+					"query": [
+						{
+							"key": "Detail",
+							"value": null
+						}
+					]
+				},
+				"description": "ㆍCheck detailed information of a single e-Cashbill.\n\nhttps://docs.popbill.com/en/cashbill/java/api#GetDetailInfo"
+			},
+			"response": []
+		},
+		{
+			"name": "Search",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "09dc7191-185a-4985-80c3-a3ba18b8602b",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Date Type in search criteria",
+							"// └ Valid Value : R / T / I",
+							"// └ R = Date of registration, W = of trading, I = of issuance",
+							"var DType = 'I'",
+							"pm.collectionVariables.set(\"Search_DType\", DType);",
+							"",
+							"// Initial date of search scope (Format : yyyyMMdd)",
+							"var SDate = '20221001'",
+							"pm.collectionVariables.set(\"Search_SDate\", SDate);",
+							"",
+							"// Last date of search scope (Format : yyyyMMdd)",
+							"var EDate = '20221101'",
+							"pm.collectionVariables.set(\"Search_EDate\", EDate);",
+							"",
+							"// [Array] e-Cashbill Status Code",
+							"// └ Wild card(*) can be put on 2nd, 3rd letter – e.g. \"3**\"",
+							"var State = ['3**'];",
+							"pm.collectionVariables.set(\"Search_State\", State.join(','));",
+							"",
+							"// [Array] Type of e-Cashbill(document)",
+							"// └ Valid Value : N / C (multiple choice is possible)",
+							"// └ N = Approval, C = Revocation",
+							"var TradeType = ['N','C'];",
+							"pm.collectionVariables.set(\"Search_TradeType\", TradeType.join(','));",
+							"",
+							"// [Array] Purpose of issuance",
+							"// └ Valid Value : P / C (multiple choice is possible)",
+							"// └ P = To deduct personal income tax, C = To proof the expenditure in business",
+							"var TradeUsage = ['P', 'C'];",
+							"pm.collectionVariables.set(\"Search_TradeUsage\", TradeUsage.join(','));",
+							"",
+							"// [Array] Trade Type",
+							"// └ Valid Value : N / B / T (multiple choice is possible)",
+							"// └ N = General, B = Book and Performance, T = Public Transportation",
+							"var TradeOpt = ['N', 'B', 'T'];",
+							"pm.collectionVariables.set(\"Search_TradeOpt\", TradeOpt.join(','));",
+							"",
+							"// [Array] Taxation Type",
+							"// └ Valid Value : T / N (multiple choice is possible)",
+							"// └ T = Taxable, N = Non-taxable",
+							"var TaxationType = ['T', 'N'];",
+							"pm.collectionVariables.set(\"Search_TaxationType\", TaxationType.join(','));",
+							"",
+							"// Page number",
+							"// └ Default = 1",
+							"var Page = 1;",
+							"pm.collectionVariables.set(\"Search_Page\", Page);",
+							"",
+							"// The number of list to be displayed per page (Maximum : 1,000)",
+							"// └ Default = 500",
+							"var PerPage = '50';",
+							"pm.collectionVariables.set(\"Search_PerPage\", PerPage);",
+							"",
+							"// Customer’s identification number : Business registration number(for company) / Resident registration number(for individual) / Mobile / (e-Cashbill) Card number",
+							"// └ Do not enter hyphen('-')",
+							"var QString = '123';",
+							"pm.collectionVariables.set(\"Search_QString\", QString);",
+							"",
+							"// Sort Direction (related to {DType})",
+							"// └ Valid Value : D / A",
+							"// └ D = Descending(Default), A = Ascending",
+							"var Order = 'D';",
+							"pm.collectionVariables.set(\"Search_Order\", Order);",
+							"",
+							"// Identification Number for minor place of business",
+							"// └ 4 digits number",
+							"// └ one more numbers must be separated by comma(',') (e.g. 1234,1110)",
+							"var FranchiseTaxRegID = '';",
+							"pm.collectionVariables.set(\"Search_FranchiseTaxRegID\", FranchiseTaxRegID);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/Search?DType={{Search_DType}}&SDate={{Search_SDate}}&EDate={{Search_EDate}}&State={{Search_State}}&TradeType={{Search_TradeType}}&TradeUsage={{Search_TradeUsage}}&TradeOpt={{Search_TradeOpt}}&TaxationType={{Search_TaxationType}}&Page={{Search_Page}}&PerPage={{Search_PerPage}}&QString={{Search_QString}}&Order={{Search_Order}}&FranchiseTaxRegID={{Search_FranchiseTaxRegID}}",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"Search"
+					],
+					"query": [
+						{
+							"key": "DType",
+							"value": "{{Search_DType}}"
+						},
+						{
+							"key": "SDate",
+							"value": "{{Search_SDate}}"
+						},
+						{
+							"key": "EDate",
+							"value": "{{Search_EDate}}"
+						},
+						{
+							"key": "State",
+							"value": "{{Search_State}}"
+						},
+						{
+							"key": "TradeType",
+							"value": "{{Search_TradeType}}"
+						},
+						{
+							"key": "TradeUsage",
+							"value": "{{Search_TradeUsage}}"
+						},
+						{
+							"key": "TradeOpt",
+							"value": "{{Search_TradeOpt}}"
+						},
+						{
+							"key": "TaxationType",
+							"value": "{{Search_TaxationType}}"
+						},
+						{
+							"key": "Page",
+							"value": "{{Search_Page}}"
+						},
+						{
+							"key": "PerPage",
+							"value": "{{Search_PerPage}}"
+						},
+						{
+							"key": "QString",
+							"value": "{{Search_QString}}"
+						},
+						{
+							"key": "Order",
+							"value": "{{Search_Order}}"
+						},
+						{
+							"key": "FranchiseTaxRegID",
+							"value": "{{Search_FranchiseTaxRegID}}"
+						}
+					]
+				},
+				"description": "ㆍSearch e-Cashbill corresponded to the search criteria. (Maximum period for search scope : 6 months)\n\nㆍDefault of optional fields is ‘to search ALL’.\n\nhttps://docs.popbill.com/en/cashbill/java/api#Search"
+			},
+			"response": []
+		},
+		{
+			"name": "GetURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "f11e100c-bc0a-4767-b34c-8deddf20f329",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Targeted Menu",
+							"// └ Valid Value : TBOX / PBOX / WRITE",
+							"// └ TBOX = Draft list, PBOX = A list of issued e-Cashbill, WRTIE = Create an e-Cashbill",
+							"var TOGO = 'WRITE'",
+							"pm.collectionVariables.set(\"GetURL_TOGO\", TOGO);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/?TG={{GetURL_TOGO}}",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						""
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "{{GetURL_TOGO}}"
+						}
+					]
+				},
+				"description": "ㆍGet the URL to access the menu related to e-Cashbill of POPBiLL website in login status.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/cashbill/java/api#GetURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetPopUpURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "e1999ebf-9a9f-4390-8a3b-797b26025697",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Cashbill ID",
+							"var mgtKey = '20221103-002'",
+							"pm.collectionVariables.set(\"GetPopUpURL_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/{{GetPopUpURL_MgtKey}}?TG=POPUP",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"{{GetPopUpURL_MgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "POPUP"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to view a single e-Cashbill on POPBiLL website.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/cashbill/java/api#GetPopUpURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetViewURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "f0936a85-475f-4db5-be05-24996ffcf922",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Cashbill ID",
+							"var mgtKey = '20221103-002'",
+							"pm.collectionVariables.set(\"GetViewURL_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/{{GetViewURL_MgtKey}}?TG=VIEW",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"{{GetViewURL_MgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "VIEW"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to view a single e-Cashbill on POPBiLL website (showing a page without menus and buttons).\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/cashbill/java/api#GetViewURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetPrintURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "9b9e8cb1-6521-4fac-b288-002afdefd51c",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Cashbill ID",
+							"var mgtKey = '20211129_06'",
+							"pm.collectionVariables.set(\"GetPrintURL_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/{{GetPrintURL_MgtKey}}?TG=PRINT",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"{{GetPrintURL_MgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "PRINT"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to print a single e-Cashbill.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/cashbill/java/api#GetPrintURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetMassPrintURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "0f13fc7d-70ff-4c59-945b-4cb34329c6b6",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// [Array] Cashbill ID",
+							"var mgtKeyList = ['20221103-001','20221103-002']",
+							"pm.collectionVariables.set(\"GetMassPrintURL_MgtKeyList\", stringify(mgtKeyList));",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{GetMassPrintURL_MgtKeyList}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/Prints",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"Prints"
+					]
+				},
+				"description": "ㆍGet the popup URL to print e-Cashbills in bulk. (Maximum: 100 cashbills)\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\n\nhttps://docs.popbill.com/en/cashbill/java/api#GetMassPrintURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetMailURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "414866cd-a4bd-4220-9bd6-9f2e2f948414",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Cashbill ID",
+							"var mgtKey = '20221103-001'",
+							"pm.collectionVariables.set(\"GetMailURL_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/{{GetMailURL_MgtKey}}?TG=MAIL",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"{{GetMailURL_MgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "MAIL"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL of button located on the bottom of a notification mail sent to customer. User can access the page to check e-Cashbill in detail.\n\nㆍThere is no valid time.\n\nhttps://docs.popbill.com/en/cashbill/java/api#GetMailURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetPDFURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "02ac688a-68de-4659-aa5a-385550d0efbe",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Cashbill ID",
+							"var mgtKey = '20221103-002'",
+							"pm.collectionVariables.set(\"GetPDFURL_MgtKey\", mgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/{{GetPDFURL_MgtKey}}?TG=PDF",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"{{GetPDFURL_MgtKey}}"
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "PDF"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to download the e-Cashbill in PDF format.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/cashbill/java/api#GetPDFURL"
+			},
+			"response": []
+		},
+		{
+			"name": "GetAccessURL",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "66705333-79de-49cf-9415-7008048fe1fc",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/?TG=LOGIN",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						""
+					],
+					"query": [
+						{
+							"key": "TG",
+							"value": "LOGIN"
+						}
+					]
+				},
+				"description": "ㆍGet the popup URL to access POPBiLL website in login status.\n\nㆍReturned URL is valid for 30 seconds and after the valid time, page is not opened.\n\nhttps://docs.popbill.com/en/cashbill/java/api#GetAccessURL"
+			},
+			"response": []
+		},
+		{
+			"name": "SendEmail",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "2ba8428a-2693-4538-ae42-e27a595d1cc3",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Cashbill ID",
+							"var mgtKey = '20221103-001';",
+							"pm.collectionVariables.set(\"SendEmail_MgtKey\", mgtKey);",
+							"",
+							"// \tEmail address",
+							"var reqBodyObj = {",
+							"  receiver : 'test@test.com'",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"SendEmail_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "EMAIL"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{SendEmail_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/{{SendEmail_MgtKey}}",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"{{SendEmail_MgtKey}}"
+					]
+				},
+				"description": "ㆍResend a notification mail to customer. There's no minimum time required and no maximum number of calling API.\n\nhttps://docs.popbill.com/en/cashbill/java/api#SendEmail"
+			},
+			"response": []
+		},
+		{
+			"name": "SendSMS",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "9563c946-4b86-4122-859c-d8c758ad5ebd",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Cashbill ID",
+							"var mgtKey = '20221103-001';",
+							"pm.collectionVariables.set(\"SendSMS_MgtKey\", mgtKey);",
+							"",
+							"var reqBodyObj = {",
+							"  receiver : '010-000-0000', // Receiver(Customer)’s number",
+							"  sender : '070-1234-1234', // Sender’s number",
+							"  contents : 'test sms', // Contents of SMS (*Exceeded contents are truncated automatically)",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"SendSMS_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "SMS"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{SendSMS_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/{{SendSMS_MgtKey}}",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"{{SendSMS_MgtKey}}"
+					]
+				},
+				"description": "ㆍSend a SMS(short message) to notify issuance of e-Cashbill. To call this API, an additional cost is charged apart from the issuance cost.\n\nㆍUser can check the result of sending SMS on POPBiLL website [문자·팩스(Messaging/FAX) -> 문자(Messaging) -> 전송내역(Sending log)]\n\nㆍSMS's capacity is 90byte and exceeded contents are truncated automatically. (Maximum of Korean letters: 45)\n\nhttps://docs.popbill.com/en/cashbill/java/api#SendSMS"
+			},
+			"response": []
+		},
+		{
+			"name": "SendFAX",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "ae6d730c-7250-437c-96dd-d3823bfeb404",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// Cashbill ID",
+							"var mgtKey = '20221103-001';",
+							"pm.collectionVariables.set(\"SendFAX_mgtKey\", mgtKey);",
+							"",
+							"var reqBodyObj = {",
+							"  receiver : '010-000-0000', // Receiver(Customer)’s number",
+							"  sender : '070-1234-1234', // Sender’s number",
+							"};",
+							"",
+							"var RequestBody = stringify(reqBodyObj);",
+							"pm.collectionVariables.set(\"SendFAX_RequestBody\", RequestBody);",
+							"",
+							"function stringify(obj) {",
+							"  return JSON.stringify(obj,function(key,value){return !value ? undefined : value;});",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					},
+					{
+						"key": "X-HTTP-Method-Override",
+						"type": "text",
+						"value": "FAX"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{SendFAX_RequestBody}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/{{SendFAX_mgtKey}}",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"{{SendFAX_mgtKey}}"
+					]
+				},
+				"description": "ㆍSend issued e-Cashbill by fax. To call this API, an additional cost is charged apart from the issuance cost.\n\nㆍUser can check the result of sending fax on POPBiLL website [문자·팩스(Messaging/FAX) -> 팩스(FAX) -> 전송내역(Sending log)].\n\nhttps://docs.popbill.com/en/cashbill/java/api#SendFAX"
+			},
+			"response": []
+		},
+		{
+			"name": "AssignMgtKey",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "9e4731f0-e416-413a-a1f3-95eede35cb86",
+						"exec": [
+							"/**",
+							" * You must call GetToken Request before calling api.",
+							" * When you call GetToken Request, the token used for Bearer Token authentication is stored in the Collection Scope variable.",
+							" */",
+							"",
+							"// POPBiLL’s cashbill ID",
+							"// └ Refer {​@no 7. list}​ of [A.8. CBSearchResult] returned by [2.4. Search] ",
+							"var popbillItemKey = '022110314431900001'",
+							"pm.collectionVariables.set(\"AssignMgtKey_ItemKey\", popbillItemKey);",
+							"",
+							"// Cashbill ID",
+							"var invoicerMgtKey = '20221103-002';",
+							"pm.collectionVariables.set(\"AssignMgtKey_InvoicerMgtKey\", invoicerMgtKey);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{API_Session_Token}}"
+					},
+					{
+						"key": "x-pb-userid",
+						"type": "text",
+						"value": "testkorea"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "MgtKey",
+							"value": "{{AssignMgtKey_InvoicerMgtKey}}",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://popbill-test.linkhub.co.kr/Cashbill/{{AssignMgtKey_ItemKey}}",
+					"protocol": "https",
+					"host": [
+						"popbill-test",
+						"linkhub",
+						"co",
+						"kr"
+					],
+					"path": [
+						"Cashbill",
+						"{{AssignMgtKey_ItemKey}}"
+					]
+				},
+				"description": "ㆍAssign a cashbill ID(mgtKey) to e-Cashbill issued in POPBiLL website manually.\n\nhttps://docs.popbill.com/en/cashbill/java/api#AssignMgtKey"
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "1618cb81-d724-4009-b622-bcc1c54805af",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "de722436-b7fe-431f-8fd8-8723dc85bf99",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"id": "6e99c808-a47d-4e67-89ff-e271d6d2c0a4",
+			"key": "API_Session_Token",
+			"value": ""
+		},
+		{
+			"id": "7b19aa2e-3342-4bbf-b745-ae9b12503eca",
+			"key": "CheckMgtKeyinUse_MgtKey",
+			"value": ""
+		},
+		{
+			"id": "348cf663-b36a-4b1a-9ce8-ac544456150b",
+			"key": "BulkMessageDigest",
+			"value": ""
+		},
+		{
+			"id": "91c4b3b7-b4ac-4fc3-b44e-a5662afa877e",
+			"key": "BulkRequestBody",
+			"value": ""
+		},
+		{
+			"id": "34c4e226-d0ce-4e34-b0a4-137a81a97ffb",
+			"key": "SubmitID",
+			"value": ""
+		},
+		{
+			"id": "3d28c99a-7e7a-4970-b2ed-69f066d6b410",
+			"key": "GetBulkResult_submitID",
+			"value": ""
+		},
+		{
+			"id": "72db9636-b75e-4104-97f0-1bcd3c36d6e6",
+			"key": "Search_DType",
+			"value": ""
+		},
+		{
+			"id": "c69d6d22-0949-4817-a516-fe74cd13e0a6",
+			"key": "Search_EDate",
+			"value": ""
+		},
+		{
+			"id": "998d4edf-54a9-47ed-a64c-eba2c0390164",
+			"key": "Search_FranchiseTaxRegID",
+			"value": ""
+		},
+		{
+			"id": "6611f31d-eede-4f19-95e5-761b5c2527db",
+			"key": "Search_Order",
+			"value": ""
+		},
+		{
+			"id": "392b650b-d1ff-4e72-99d0-19dd09c6f840",
+			"key": "Search_Page",
+			"value": ""
+		},
+		{
+			"id": "9d05514b-c780-480c-8c31-a255c973d00a",
+			"key": "Search_PerPage",
+			"value": ""
+		},
+		{
+			"id": "3066d534-ca5f-4dff-967c-7ad18b72d8dd",
+			"key": "Search_QString",
+			"value": ""
+		},
+		{
+			"id": "d65ca6aa-3775-4e3d-9ada-c129c346a94c",
+			"key": "Search_SDate",
+			"value": ""
+		},
+		{
+			"id": "0eae6368-12a5-45da-b956-5220be88e777",
+			"key": "Search_State",
+			"value": ""
+		},
+		{
+			"id": "9e2fd310-8485-4da6-a022-9a0919e63cdb",
+			"key": "Search_TaxationType",
+			"value": ""
+		},
+		{
+			"id": "633bbdb5-abca-4a4d-bb69-c49828267ac7",
+			"key": "Search_TradeOpt",
+			"value": ""
+		},
+		{
+			"id": "d9b409b3-3427-4dbd-9e9f-9cd07d6a5c8a",
+			"key": "Search_TradeType",
+			"value": ""
+		},
+		{
+			"id": "10ab2c4a-659c-4db0-a5df-ed1e5fcc2dd4",
+			"key": "Search_TradeUsage",
+			"value": ""
+		},
+		{
+			"id": "8366e630-efa0-4e93-9b05-1818f36a0120",
+			"key": "GetInfo_MgtKey",
+			"value": ""
+		},
+		{
+			"id": "5fd2879e-9e4a-43e5-886e-4398581095fa",
+			"key": "GetInfos_InovicerMgtKeyList",
+			"value": ""
+		},
+		{
+			"id": "bf77c224-2507-48d8-8487-3a85df3ba707",
+			"key": "GetDetailInfo_MgtKey",
+			"value": ""
+		},
+		{
+			"id": "ec26fdd7-ca7f-4d6f-8fe0-d5733113ae67",
+			"key": "GetURL_TOGO",
+			"value": ""
+		},
+		{
+			"id": "6e1e8de1-a010-405f-aa7a-6a81d7c1d61e",
+			"key": "GetPopUpURL_MgtKey",
+			"value": ""
+		},
+		{
+			"id": "4d69a7a3-75f9-4731-a583-7759983f2b96",
+			"key": "GetViewURL_MgtKey",
+			"value": ""
+		},
+		{
+			"id": "86c952b1-d349-4782-80f2-481a2b722c41",
+			"key": "GetMassPrintURL_MgtKeyList",
+			"value": ""
+		},
+		{
+			"id": "33910272-dc90-4788-ad03-e60c984a006c",
+			"key": "GetMailURL_MgtKey",
+			"value": ""
+		},
+		{
+			"id": "e509d4e6-3769-449b-bd89-1bcf9d0efae2",
+			"key": "GetPDFURL_MgtKey",
+			"value": ""
+		},
+		{
+			"id": "878c9f1f-f799-4311-8305-dadbcfe425a6",
+			"key": "SendEmail_MgtKey",
+			"value": ""
+		},
+		{
+			"id": "09a5fb77-4276-4d19-95e1-f984a7fe9123",
+			"key": "SendEmail_RequestBody",
+			"value": ""
+		},
+		{
+			"id": "595ce534-f207-4019-817b-c999f1618b9b",
+			"key": "SendSMS_MgtKey",
+			"value": ""
+		},
+		{
+			"id": "a3f02f9c-e0f6-44b2-86cd-cf596d4ac71b",
+			"key": "SendSMS_RequestBody",
+			"value": ""
+		},
+		{
+			"id": "d6097367-05e2-4dce-8472-984dd4d619d4",
+			"key": "SendFAX_RequestBody",
+			"value": ""
+		},
+		{
+			"id": "b6b1a0f9-2b6d-499f-a513-dffb9fba8851",
+			"key": "SendFAX_mgtKey",
+			"value": ""
+		},
+		{
+			"id": "0732d408-5dc5-45c6-b900-1668d16ff9cc",
+			"key": "AssignMgtKey_InvoicerMgtKey",
+			"value": ""
+		},
+		{
+			"id": "871d60d5-81f1-4bab-98cd-23c25dfc52e6",
+			"key": "AssignMgtKey_ItemKey",
+			"value": ""
+		}
+	],
+	"protocolProfileBehavior": {}
+}
